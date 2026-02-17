@@ -2,157 +2,183 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UpdateSocialMediaSchema } from "@/lib/validation/sosmed";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
+import { ApiResponse } from "@/lib/response/api-response";
+import z from "zod";
+import { withAuth } from "@/lib/with-auth";
 
-export async function PATCH(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export const PATCH = withAuth(async (req, { params }) => {
   try {
-    const { id } = await context.params;
+    const { id } = await params!;
 
-    if (!id) {
-      return NextResponse.json({ errors: ["Invalid ID"] }, { status: 400 });
+    if (!id || id.trim() === "") {
+      return NextResponse.json(ApiResponse.error("ID tidak valid", 400), {
+        status: 400,
+      });
+    }
+
+    const existing = await prisma.socialMedia.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        ApiResponse.error("Social media tidak ditemukan", 404),
+        { status: 404 },
+      );
     }
 
     const formData = await req.formData();
-    const platform = formData.get("platform") as string | null;
-    const url = formData.get("url") as string | null;
-    const photoFile = formData.get("photo") as File | null;
 
-    const validationResult = UpdateSocialMediaSchema.safeParse({
+    const platform = formData.get("platform")?.toString().trim() ?? null;
+    const url = formData.get("url")?.toString().trim() ?? null;
+    const photoFile = formData.get("photo");
+
+    const validation = UpdateSocialMediaSchema.safeParse({
       platform,
       url,
       photo: photoFile,
     });
 
-    if (!validationResult.success) {
+    if (!validation.success) {
       return NextResponse.json(
-        { errors: validationResult.error.errors.map((err) => err.message) },
-        { status: 400 }
+        ApiResponse.error(
+          validation.error.errors.map((e) => e.message).join(", "),
+          400,
+        ),
+        { status: 400 },
       );
     }
 
-    const updateData: Record<string, string | undefined> = {}; 
+    const updateData: {
+      platform?: string;
+      url?: string;
+      photo?: string;
+    } = {};
 
-    if (platform) updateData.platform = platform;
-    if (url) updateData.url = url;
-
-    if (photoFile) {
-      const existingData = await prisma.socialMedia.findUnique({
-        where: { id },
-        select: { photo: true },
+    // 🔥 Cegah duplicate platform
+    if (platform && platform !== existing.platform) {
+      const duplicate = await prisma.socialMedia.findFirst({
+        where: { platform },
       });
 
-      if (existingData?.photo) {
-        await deleteFromCloudinary(existingData.photo); 
+      if (duplicate) {
+        return NextResponse.json(
+          ApiResponse.error("Platform sudah digunakan", 409),
+          { status: 409 },
+        );
       }
 
-      const uploadedUrl = await uploadToCloudinary(
-        photoFile,
-        "social-media-photos"
-      );
+      updateData.platform = platform;
+    }
 
-      if (typeof uploadedUrl === "string") {
-        updateData.photo = uploadedUrl;
+    if (url && url !== existing.url) {
+      updateData.url = url;
+    }
+
+    if (photoFile && photoFile instanceof File) {
+      const uploadedUrl = await uploadToCloudinary(photoFile, "social-media");
+
+      // hapus foto lama
+      if (existing.photo) {
+        try {
+          await deleteFromCloudinary(existing.photo);
+        } catch (err) {
+          console.error("Cloudinary delete error:", err);
+        }
       }
+
+      updateData.photo = uploadedUrl;
     }
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
-        { errors: ["Tidak ada perubahan data"] },
-        { status: 400 }
+        ApiResponse.success(existing, "Tidak ada perubahan"),
+        { status: 200 },
       );
     }
 
-    const updatedSocialMedia = await prisma.socialMedia.update({
+    const updated = await prisma.socialMedia.update({
       where: { id },
       data: updateData,
     });
 
-    return NextResponse.json(updatedSocialMedia, { status: 200 });
-  } catch (error) {
-    console.error("Error updating social media data:", error);
     return NextResponse.json(
-      { errors: ["Gagal mengupdate data", (error as Error).message] },
-      { status: 500 }
+      ApiResponse.success(updated, "Social media berhasil diperbarui"),
+      { status: 200 },
     );
-  }
-}
+  } catch (error) {
+    console.error("Error updating social media:", error);
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-
-    if (!id) {
-      return NextResponse.json({ message: "ID tidak valid" }, { status: 400 });
-    }
-
-    const socialMediaData = await prisma.socialMedia.findUnique({
-      where: { id },
-    });
-
-    if (!socialMediaData) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: "Data tidak ditemukan" },
-        { status: 404 }
+        ApiResponse.error(error.errors.map((e) => e.message).join(", "), 400),
+        { status: 400 },
       );
     }
 
-    return NextResponse.json(socialMediaData, { status: 200 });
-  } catch (error) {
-    console.error("Error fetching social media data:", error);
     return NextResponse.json(
-      { message: "Gagal mengambil data", error: (error as Error).message },
-      { status: 500 }
+      ApiResponse.error("Gagal memperbarui social media", 500),
+      { status: 500 },
     );
   }
-}
+});
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withAuth(async (req, { params }) => {
   try {
-    const { id } = await params;
+    const { id } = await params!;
 
-    if (!id) {
-      return NextResponse.json({ errors: ["Invalid ID"] }, { status: 400 });
+    if (!id || id.trim() === "") {
+      return NextResponse.json(ApiResponse.error("ID tidak valid", 400), {
+        status: 400,
+      });
     }
 
-    const existingData = await prisma.socialMedia.findUnique({
+    const existing = await prisma.socialMedia.findUnique({
       where: { id },
-      select: { photo: true },
-    });
-
-    if (!existingData) {
-      return NextResponse.json(
-        { errors: ["Data tidak ditemukan"] },
-        { status: 404 }
-      );
-    }
-
-    if (existingData.photo) {
-      await deleteFromCloudinary(existingData.photo);
-    }
-
-    const deletedSocialMedia = await prisma.socialMedia.delete({
-      where: { id },
-    });
-
-    return NextResponse.json(
-      {
-        message: "Social media entry deleted successfully",
-        data: deletedSocialMedia,
+      select: {
+        id: true,
+        platform: true,
+        photo: true,
       },
-      { status: 200 }
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        ApiResponse.error("Social media tidak ditemukan", 404),
+        { status: 404 },
+      );
+    }
+
+    // Hapus dari database dulu
+    await prisma.socialMedia.delete({
+      where: { id },
+    });
+
+    // Cleanup image Cloudinary (tidak bikin request gagal kalau error)
+    if (existing.photo) {
+      try {
+        await deleteFromCloudinary(existing.photo);
+      } catch (err) {
+        console.error("Cloudinary delete error:", err);
+      }
+    }
+
+    return NextResponse.json(
+      ApiResponse.success(
+        {
+          id: existing.id,
+          platform: existing.platform,
+        },
+        "Social media berhasil dihapus",
+      ),
+      { status: 200 },
     );
   } catch (error) {
+    console.error("Error deleting social media:", error);
+
     return NextResponse.json(
-      { errors: ["Gagal menghapus data", (error as Error).message] },
-      { status: 500 }
+      ApiResponse.error("Terjadi kesalahan saat menghapus social media", 500),
+      { status: 500 },
     );
   }
-}
+});

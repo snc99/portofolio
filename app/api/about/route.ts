@@ -1,60 +1,138 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AboutSchema } from "@/lib/validation/about";
+import { ApiResponse } from "@/lib/response/api-response";
+import { withAuth } from "@/lib/with-auth";
 
-export async function POST(req: NextRequest) {
+export const GET = withAuth(async () => {
+  const about = await prisma.about.findFirst({
+    select: {
+      id: true,
+      description: true,
+    },
+  });
+
+  return NextResponse.json(
+    ApiResponse.success(about, "Data about berhasil diambil"),
+    { status: 200 },
+  );
+});
+
+export const POST = withAuth(async (req: Request) => {
   try {
     const body = await req.json();
-    const { description } = body;
 
-    const parsedData = AboutSchema.safeParse({ description });
-
-    if (!parsedData.success) {
+    const parsed = AboutSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: parsedData.error.errors.map((err) => err.message).join(", ") },
-        { status: 400 }
+        ApiResponse.error(
+          parsed.error.errors.map((e) => e.message).join(", "),
+          400,
+        ),
+        { status: 400 },
       );
     }
 
-    const existingAbout = await prisma.about.findFirst();
-    if (existingAbout) {
+    // karena singleton → cek dulu
+    const existing = await prisma.about.findFirst();
+    if (existing) {
       return NextResponse.json(
-        { error: "Data About sudah ada, tidak bisa menambahkan lagi." },
-        { status: 400 }
+        ApiResponse.error("Data about sudah ada. Gunakan update.", 400),
+        { status: 400 },
       );
     }
 
-    const newAbout = await prisma.about.create({
+    const about = await prisma.about.create({
       data: {
-        description: parsedData.data.description,
+        description: parsed.data.description,
       },
     });
 
-    return NextResponse.json(newAbout, { status: 201 });
-  } catch (error) {
-    console.error("Terjadi kesalahan:", error);
     return NextResponse.json(
-      { error: "Gagal menambahkan data About." },
-      { status: 500 }
+      ApiResponse.success(about, "About berhasil dibuat", 201),
+      { status: 201 },
     );
-  }
-}
+  } catch (error) {
+    console.error(error);
 
-export async function GET() {
+    return NextResponse.json(ApiResponse.error("Gagal membuat about", 500), {
+      status: 500,
+    });
+  }
+});
+
+export const PUT = withAuth(async (req: Request) => {
   try {
-    const aboutData = await prisma.about.findFirst();
+    const body = await req.json();
+
+    const parsed = AboutSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        ApiResponse.error(
+          parsed.error.errors[0]?.message || "Input tidak valid",
+          400,
+        ),
+        { status: 400 },
+      );
+    }
+
+    const { description } = parsed.data;
+
+    // ambil record pertama (kalau ada)
+    const existing = await prisma.about.findFirst();
+
+    let about;
+
+    if (existing) {
+      // update
+      about = await prisma.about.update({
+        where: { id: existing.id },
+        data: { description },
+      });
+    } else {
+      // create kalau belum ada
+      about = await prisma.about.create({
+        data: { description },
+      });
+    }
 
     return NextResponse.json(
-      aboutData
-        ? { id: aboutData.id, description: aboutData.description }
-        : { description: null },
-      { status: 200 }
+      ApiResponse.success(about, "About berhasil diperbarui"),
+      { status: 200 },
     );
   } catch (error) {
-    console.error("Terjadi kesalahan:", error);
-    return NextResponse.json(
-      { error: "Gagal mengambil data About." },
-      { status: 500 }
-    );
+    console.error(error);
+
+    return NextResponse.json(ApiResponse.error("Gagal update about", 500), {
+      status: 500,
+    });
   }
-}
+});
+
+export const DELETE = withAuth(async () => {
+  try {
+    const existing = await prisma.about.findFirst();
+
+    if (!existing) {
+      return NextResponse.json(
+        ApiResponse.error("Data about tidak ditemukan", 404),
+        { status: 404 },
+      );
+    }
+
+    await prisma.about.delete({
+      where: { id: existing.id },
+    });
+
+    return NextResponse.json(
+      ApiResponse.success(null, "About berhasil dihapus"),
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error(error);
+
+    return NextResponse.json(ApiResponse.error("Gagal menghapus about", 500), {
+      status: 500,
+    });
+  }
+});

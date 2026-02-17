@@ -22,7 +22,7 @@ model Admin {
   updatedAt DateTime @updatedAt
 }
 
-model Home {
+model Profile {
   id          String   @id @default(uuid()) @db.Uuid
   motto       String
   cvLink      String?  

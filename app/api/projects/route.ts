@@ -1,127 +1,165 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { CreateProjectSchema } from "@/lib/validation/project";
+import { withAuth } from "@/lib/with-auth";
+import { ApiResponse } from "@/lib/response/api-response";
+import z from "zod";
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req) => {
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id"); 
 
-    if (id) {
-      const project = await prisma.project.findUnique({
-        where: { id },
+    const page = Number(searchParams.get("page") ?? 1);
+    const limit = Number(searchParams.get("limit") ?? 10);
+
+    const safePage = page < 1 ? 1 : page;
+    const safeLimit = limit > 50 ? 50 : limit;
+
+    const skip = (safePage - 1) * safeLimit;
+
+    const [items, total] = await Promise.all([
+      prisma.project.findMany({
+        skip,
+        take: safeLimit,
+        orderBy: { createdAt: "desc" },
         include: {
           techStack: {
             include: {
-              skill: true, 
+              skill: true,
             },
           },
         },
-      });
+      }),
+      prisma.project.count(),
+    ]);
 
-      if (!project) {
-        return NextResponse.json(
-          { error: "Project not found" },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json(project, { status: 200 });
-    }
-
-    const projects = await prisma.project.findMany({
-      include: {
-        techStack: {
-          include: {
-            skill: true, 
+    return NextResponse.json(
+      ApiResponse.success(
+        {
+          items,
+          meta: {
+            page: safePage,
+            limit: safeLimit,
+            total,
+            totalPages: Math.ceil(total / safeLimit),
           },
         },
-      },
-    });
-    return NextResponse.json(projects, { status: 200 });
+        "Project berhasil diambil",
+      ),
+      { status: 200 },
+    );
   } catch (error) {
-    console.error("Error fetching projects:", error);
+    console.error(error);
+
     return NextResponse.json(
-      { error: "Failed to fetch projects" },
-      { status: 500 }
+      ApiResponse.error("Gagal mengambil project", 500),
+      { status: 500 },
     );
   }
-}
+});
 
-export async function POST(req: Request) {
+export const POST = withAuth(async (req: Request) => {
   try {
     const formData = await req.formData();
 
-    const title = formData.get("title") as string;
-    const description = (formData.get("description") as string | null) || "";
-    const link = (formData.get("link") as string | null) || "";
+    const title = formData.get("title")?.toString();
+    const description = formData.get("description")?.toString() ?? "";
+    const link = formData.get("link")?.toString() ?? "";
     const projectImageFile = formData.get("projectImage") as File | null;
-    const techstack = formData.get("skills") as string | null; 
+    const skillsRaw = formData.get("skills") as string | null;
 
+    // Parse skills
     let skillsArray: string[] = [];
-    if (techstack) {
+
+    if (skillsRaw) {
       try {
-        skillsArray = JSON.parse(techstack);
-        if (!Array.isArray(skillsArray)) {
-          throw new Error("Skills harus berupa array.");
-        }
-      } catch (err) {
-        console.error("Error parsing skills:", err);
+        const parsed = JSON.parse(skillsRaw);
+        if (!Array.isArray(parsed)) throw new Error();
+        skillsArray = parsed;
+      } catch {
         return NextResponse.json(
-          { error: { skills: "Format skills tidak valid." } },
-          { status: 400 }
+          ApiResponse.error("Format skills tidak valid", 400),
+          { status: 400 },
         );
       }
     }
 
-    const validationResult = CreateProjectSchema.safeParse({
+    const validation = CreateProjectSchema.safeParse({
       title,
       description,
       link,
       projectImage: projectImageFile,
-      skills: skillsArray, 
+      skills: skillsArray,
     });
 
-    if (!validationResult.success) {
-      const formattedErrors = validationResult.error.errors.reduce(
-        (acc, err) => {
-          acc[err.path[0]] = err.message;
-          return acc;
-        },
-        {} as Record<string, string>
+    if (!validation.success) {
+      return NextResponse.json(
+        ApiResponse.error(
+          validation.error.errors.map((e) => e.message).join(", "),
+          400,
+        ),
+        { status: 400 },
       );
-
-      return NextResponse.json({ error: formattedErrors }, { status: 400 });
     }
 
-    const projectImageUrl = projectImageFile
+    // 🔥 Cek apakah semua skill ID valid
+    if (skillsArray.length > 0) {
+      const validSkills = await prisma.skill.findMany({
+        where: { id: { in: skillsArray } },
+        select: { id: true },
+      });
+
+      if (validSkills.length !== skillsArray.length) {
+        return NextResponse.json(
+          ApiResponse.error("Beberapa skill tidak valid", 400),
+          { status: 400 },
+        );
+      }
+    }
+
+    const imageUrl = projectImageFile
       ? await uploadToCloudinary(projectImageFile, "projects")
       : null;
 
     const newProject = await prisma.project.create({
       data: {
-        title,
-        description,
-        link,
-        projectImage: projectImageUrl,
+        title: validation.data.title,
+        description: validation.data.description,
+        link: validation.data.link,
+        projectImage: imageUrl,
         techStack: {
-          create: skillsArray.map((skillId) => ({
+          create: validation.data.skills.map((skillId) => ({
             skill: { connect: { id: skillId } },
           })),
+        },
+      },
+      include: {
+        techStack: {
+          include: {
+            skill: true,
+          },
         },
       },
     });
 
     return NextResponse.json(
-      { message: "Project berhasil disimpan!", project: newProject },
-      { status: 201 }
+      ApiResponse.success(newProject, "Project berhasil disimpan", 201),
+      { status: 201 },
     );
   } catch (error) {
-    console.error("Error di API:", error);
+    console.error("Error creating project:", error);
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        ApiResponse.error(error.errors.map((e) => e.message).join(", "), 400),
+        { status: 400 },
+      );
+    }
+
     return NextResponse.json(
-      { error: "Gagal menyimpan proyek!" },
-      { status: 500 }
+      ApiResponse.error("Gagal menyimpan project", 500),
+      { status: 500 },
     );
   }
-}
+});

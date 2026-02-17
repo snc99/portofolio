@@ -2,79 +2,109 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { WorkExperienceSchema } from "@/lib/validation/workExperience";
 import { z } from "zod";
+import { withAuth } from "@/lib/with-auth";
+import { ApiResponse } from "@/lib/response/api-response";
+import { withRateLimit } from "@/lib/with-rate-limit";
 
-export async function POST(req: Request) {
+export const GET = withAuth(async (req: Request) => {
   try {
-    const formData = await req.formData();
-    const body = {
-      companyName: formData.get("companyName") as string,
-      position: formData.get("position") as string,
-      startDate: formData.get("startDate") as string,
-      endDate:
-        formData.get("endDate") === ""
-          ? null
-          : (formData.get("endDate") as string),
-      description:
-        formData.get("description") === ""
-          ? null
-          : (formData.get("description") as string),
-    };
+    const { searchParams } = new URL(req.url);
 
-    const validatedData = WorkExperienceSchema.parse(body);
+    const page = Number(searchParams.get("page") ?? 1);
+    const limit = Number(searchParams.get("limit") ?? 10);
 
-    const isPresent = validatedData.endDate === null;
+    const safePage = page < 1 ? 1 : page;
+    const safeLimit = limit > 50 ? 50 : limit; // max 50 biar aman
 
-    const newExperience = await prisma.workExperience.create({
-      data: {
-        companyName: validatedData.companyName,
-        position: validatedData.position,
-        startDate: new Date(validatedData.startDate),
-        endDate: validatedData.endDate ? new Date(validatedData.endDate) : null,
-        isPresent,
-        description: validatedData.description || null,
-      },
-    });
+    const skip = (safePage - 1) * safeLimit;
+
+    const [items, total] = await Promise.all([
+      prisma.workExperience.findMany({
+        skip,
+        take: safeLimit,
+        orderBy: { startDate: "desc" },
+        select: {
+          id: true,
+          companyName: true,
+          position: true,
+          startDate: true,
+          endDate: true,
+          isPresent: true,
+          description: true,
+        },
+      }),
+      prisma.workExperience.count(),
+    ]);
 
     return NextResponse.json(
-      { success: true, data: newExperience },
-      { status: 201 }
+      ApiResponse.success(
+        {
+          items,
+          meta: {
+            page: safePage,
+            limit: safeLimit,
+            total,
+            totalPages: Math.ceil(total / safeLimit),
+          },
+        },
+        "Work experience berhasil diambil",
+      ),
+      { status: 200 },
     );
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      console.error("❌ Validasi gagal:", error.errors);
+    console.error(error);
+
+    return NextResponse.json(
+      ApiResponse.error("Gagal mengambil work experience", 500),
+      { status: 500 },
+    );
+  }
+});
+
+export const POST = withAuth(
+  withRateLimit(async (req: Request) => {
+    try {
+      const body = await req.json();
+
+      const validatedData = WorkExperienceSchema.parse(body);
+
+      const isPresent = validatedData.endDate === null;
+
+      const newExperience = await prisma.workExperience.create({
+        data: {
+          companyName: validatedData.companyName,
+          position: validatedData.position,
+          startDate: new Date(validatedData.startDate),
+          endDate: validatedData.endDate
+            ? new Date(validatedData.endDate)
+            : null,
+          isPresent,
+          description: validatedData.description || null,
+        },
+      });
+
       return NextResponse.json(
-        { success: false, errors: error.errors },
-        { status: 400 }
+        ApiResponse.success(
+          newExperience,
+          "Work experience berhasil ditambahkan",
+          201,
+        ),
+        { status: 201 },
+      );
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return NextResponse.json(
+          ApiResponse.error(error.errors.map((e) => e.message).join(", "), 400),
+          { status: 400 },
+        );
+      }
+
+      console.error(error);
+
+      return NextResponse.json(
+        ApiResponse.error("Gagal menambahkan work experience", 500),
+        { status: 500 },
       );
     }
-
-    console.error("🔥 Server Error:", error);
-    return NextResponse.json(
-      { success: false, message: "Internal Server Error" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function GET() {
-  try {
-    const experiences = await prisma.workExperience.findMany({
-      select: {
-        id: true,
-        companyName: true,
-        position: true,
-        startDate: true,
-        endDate: true,
-        isPresent: true,
-        description: true,
-      },
-    });
-    return NextResponse.json(experiences);
-  } catch (error) {
-    console.error("Failed to fetch data:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch data" },
-      { status: 500 }
-    );
-  }
-}
+  }, 10),
+);

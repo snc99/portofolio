@@ -11,16 +11,36 @@ import FloatingToggle from "@/components/landing/FloatingToggle";
 
 export default function Home() {
   return (
-    <>
+    <main className="min-h-screen bg-gradient-to-b bg-pastel-green">
       <Navbar />
-      <Hero />
-      <About />
-      <Skills />
-      <WorkHistory />
-      <Project />
-      <Contact />
+
+      <section id="home" className="scroll-mt-16">
+        <Hero />
+      </section>
+
+      <section id="about" className="scroll-mt-16">
+        <About />
+      </section>
+
+      <section id="skills" className="scroll-mt-16 bg-pastel-green/20">
+        <Skills />
+      </section>
+
+      <section id="work" className="scroll-mt-16">
+        <WorkHistory />
+      </section>
+
+      <section id="projects" className="scroll-mt-16 bg-pastel-green/20">
+        <Project />
+      </section>
+
+      <section id="contact" className="scroll-mt-16">
+        <Contact />
+      </section>
+
       <Footer />
+
       <FloatingToggle />
-    </>
+    </main>
   );
 }

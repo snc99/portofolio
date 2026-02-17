@@ -1,24 +1,23 @@
-// components/Navbar.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { Menu, X } from "lucide-react";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
+  const [isScrolled, setIsScrolled] = useState(false);
 
   // Handle active section based on scroll position
   useEffect(() => {
-    const sections = [
-      "hero",
-      "about",
-      "skills",
-      "work-experience",
-      "project",
-      "contact",
-    ];
+    const sections = ["home", "about", "skills", "work", "projects", "contact"];
+
     const handleScroll = () => {
+      // Handle navbar background
+      setIsScrolled(window.scrollY > 20);
+
+      // Handle active section
       sections.forEach((section) => {
         const element = document.getElementById(section);
         if (element) {
@@ -40,73 +39,111 @@ const Navbar = () => {
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+    setIsOpen(false);
   };
 
-  return (
-    <nav className="fixed top-0 left-0 w-full z-50 backdrop-blur-lg bg-transparent">
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-center h-16">
-        <div className="hidden md:flex space-x-8">
-          {["About", "Skills", "Work Experience", "Project", "Contact"].map(
-            (item) => {
-              const id = item.toLowerCase().replace(" ", "-");
-              return (
-                <motion.button
-                  key={id}
-                  onClick={() => handleScroll(id)}
-                  className={`transition text-lg ${
-                    activeSection === id
-                      ? "text-gray-400 font-semibold"
-                      : "text-blue-500"
-                  } hover:text-gray-400`}
-                  whileHover={{ scale: 1.05 }} // Adding scale effect on hover
-                  whileTap={{ scale: 0.95 }} // Adding tap effect
-                >
-                  {item}
-                </motion.button>
-              );
-            }
-          )}
-        </div>
+  const menuItems = [
+    { name: "Home", id: "home" },
+    { name: "About", id: "about" },
+    { name: "Skills", id: "skills" },
+    { name: "Work", id: "work" },
+    { name: "Projects", id: "projects" },
+    { name: "Contact", id: "contact" },
+  ];
 
-        {/* Hamburger menu for mobile view */}
-        <div className="md:hidden absolute right-6">
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="text-blue-500 focus:outline-none text-2xl"
+  return (
+    <motion.nav
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.5 }}
+      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
+        isScrolled
+          ? "bg-white/90 backdrop-blur-md shadow-sm border-b border-[#e6f3e6]"
+          : "bg-transparent"
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo/Brand */}
+          <motion.div
+            className="flex-shrink-0"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            {isOpen ? "✖" : "☰"}
-          </button>
+            <span className="text-2xl font-light text-[#2d4a2d] tracking-wide">
+              ✦ portfolio
+            </span>
+          </motion.div>
+
+          {/* Desktop Menu */}
+          <div className="hidden md:flex items-center space-x-1">
+            {menuItems.map((item) => (
+              <motion.button
+                key={item.id}
+                onClick={() => handleScroll(item.id)}
+                className={`relative px-4 py-2 text-sm font-medium transition-colors rounded-full ${
+                  activeSection === item.id
+                    ? "text-[#2d4a2d]"
+                    : "text-[#4a6b4a] hover:text-[#2d4a2d]"
+                }`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {item.name}
+                {activeSection === item.id && (
+                  <motion.div
+                    layoutId="activeSection"
+                    className="absolute inset-0 bg-[#e6f3e6] rounded-full -z-10"
+                    transition={{ type: "spring", duration: 0.5 }}
+                  />
+                )}
+              </motion.button>
+            ))}
+          </div>
+
+          {/* Hamburger menu for mobile view */}
+          <div className="md:hidden">
+            <motion.button
+              onClick={() => setIsOpen(!isOpen)}
+              className="text-[#4a6b4a] hover:text-[#2d4a2d] focus:outline-none p-2"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              {isOpen ? <X size={24} /> : <Menu size={24} />}
+            </motion.button>
+          </div>
         </div>
       </div>
 
+      {/* Mobile Menu */}
       {isOpen && (
-        <div className="md:hidden backdrop-blur-lg bg-transparent border border-gray-700 rounded-lg">
-          {["About", "Skills", "Work Experience", "Project", "Contact"].map(
-            (item) => {
-              const id = item.toLowerCase().replace(" ", "-");
-              return (
-                <motion.button
-                  key={id}
-                  onClick={() => {
-                    handleScroll(id);
-                    setIsOpen(false); // Close the menu on click
-                  }}
-                  className={`block px-4 py-3 text-lg ${
-                    activeSection === id
-                      ? "text-gray-400 font-semibold"
-                      : "text-blue-500"
-                  } hover:text-gray-400`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {item}
-                </motion.button>
-              );
-            }
-          )}
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.2 }}
+          className="md:hidden bg-pastel-green/20 backdrop-blur-md border-t border-[#e6f3e6]"
+        >
+          <div className="px-4 py-2 space-y-1">
+            {menuItems.map((item) => (
+              <motion.button
+                key={item.id}
+                onClick={() => handleScroll(item.id)}
+                className={`block w-full text-left px-4 py-3 text-base font-medium rounded-lg transition-colors ${
+                  activeSection === item.id
+                    ? "bg-[#e6f3e6] text-[#2d4a2d]"
+                    : "text-[#4a6b4a] hover:bg-[#e6f3e6] hover:text-[#2d4a2d]"
+                }`}
+                whileHover={{ x: 10 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {item.name}
+              </motion.button>
+            ))}
+          </div>
+        </motion.div>
       )}
-    </nav>
+    </motion.nav>
   );
 };
 

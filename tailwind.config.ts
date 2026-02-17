@@ -10,7 +10,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        lightBlue: "#ADD8E6",
+        pastel: {
+          green: "#e6f3e6",
+          mint: "#d4edda",
+          soft: "#c3e6cb",
+          light: "#f0f9f0",
+          cream: "#f8fff8",
+        },
         white: "#FFFFFF",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
@@ -75,9 +81,24 @@ export default {
           "50%": { transform: "translateX(4px)" },
           "75%": { transform: "translateX(-4px)" },
         },
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideUp: {
+          "0%": { transform: "translateY(20px)", opacity: "0" },
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
       },
       animation: {
         shake: "shake 0.3s ease-in-out",
+        fadeIn: "fadeIn 0.5s ease-in-out",
+        slideUp: "slideUp 0.6s ease-out",
+        float: "float 3s ease-in-out infinite",
       },
     },
   },
