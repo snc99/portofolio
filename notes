@@ -1,0 +1,56 @@
+untuk menjalankan seed -> npx prisma db seed
+
+Langkah-langkah untuk Push ke GitHub
+
+1. git status (Periksa perubahan yang ada pada proyek/optional)
+2. git add . (menambahkan semua perubahan sekaligus)
+3. git commit -m "Pesan commit yang perubahan"
+4. git push origin main
+
+
+# npx migrate dev (jalankan migrate)
+
+fitur
+untuk home ✅
+inputan
+
+1. motto & cv
+2. sosmed
+
+untuk about ✅
+inputan
+
+1. deskripsi aja
+
+untuk skill ✅
+inputan
+
+1. judul
+2. foto
+
+untuk Work Experience
+inputan
+
+1. nama perusahaan
+2. role
+3. deskripsi
+4. masa kerja
+
+untuk project
+inputan
+
+1. judul
+2. deskripsi
+3. foto
+4. framework yg di pake
+
+===========================================================================
+fitur Home
+
+- Create Motto dan CV : Backend di validasi oleh zod & fronend di tangani dengan zod (DONE)
+- Edit Motto dan CV : Backend di validasi oleh zod & fronend di tangani dengan zod
+
+================================================================
+next js versi 15 itu harus di promise setiap fungsinya dan setelah itu di await
+req: NextRequest,
+{ params }: { params: Promise<{ id: string }> }
