@@ -4,7 +4,6 @@ import { CreateSocialMediaSchema } from "@/lib/validation/sosmed";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { withAuth } from "@/lib/with-auth";
 import { ApiResponse } from "@/lib/response/api-response";
-import z from "zod";
 
 export const GET = withAuth(async (req: Request) => {
   try {
@@ -56,21 +55,10 @@ export const POST = withAuth(async (req: Request) => {
   try {
     const formData = await req.formData();
 
-    const platform = formData.get("platform")?.toString().trim();
-    const url = formData.get("url")?.toString().trim();
-    const photoFile = formData.get("photo");
-
-    if (!platform || !url || !(photoFile instanceof File)) {
-      return NextResponse.json(
-        ApiResponse.error("Platform, URL, dan photo wajib diisi", 400),
-        { status: 400 },
-      );
-    }
-
     const validation = CreateSocialMediaSchema.safeParse({
-      platform,
-      url,
-      photo: photoFile,
+      platform: formData.get("platform"),
+      url: formData.get("url"),
+      photo: formData.get("photo"),
     });
 
     if (!validation.success) {
@@ -83,9 +71,13 @@ export const POST = withAuth(async (req: Request) => {
       );
     }
 
-    // 🔥 Optional: cegah duplicate platform
+    const { platform, url, photo } = validation.data;
+
+    // 🔥 Cegah duplicate platform (case insensitive)
     const existing = await prisma.socialMedia.findFirst({
-      where: { platform },
+      where: {
+        platform: { equals: platform, mode: "insensitive" },
+      },
     });
 
     if (existing) {
@@ -95,7 +87,7 @@ export const POST = withAuth(async (req: Request) => {
       );
     }
 
-    const uploadedUrl = await uploadToCloudinary(photoFile, "social-media");
+    const uploadedUrl = await uploadToCloudinary(photo, "social-media");
 
     const newSocialMedia = await prisma.socialMedia.create({
       data: {
@@ -115,13 +107,6 @@ export const POST = withAuth(async (req: Request) => {
     );
   } catch (error) {
     console.error("Error creating social media:", error);
-
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        ApiResponse.error(error.errors.map((e) => e.message).join(", "), 400),
-        { status: 400 },
-      );
-    }
 
     return NextResponse.json(
       ApiResponse.error("Terjadi kesalahan saat menambahkan social media", 500),

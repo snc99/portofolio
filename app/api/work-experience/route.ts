@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { WorkExperienceSchema } from "@/lib/validation/workExperience";
-import { z } from "zod";
 import { withAuth } from "@/lib/with-auth";
 import { ApiResponse } from "@/lib/response/api-response";
-import { withRateLimit } from "@/lib/with-rate-limit";
+import { CreateWorkExperienceSchema } from "@/lib/validation/workExperience";
 
 export const GET = withAuth(async (req: Request) => {
   try {
@@ -61,50 +59,52 @@ export const GET = withAuth(async (req: Request) => {
   }
 });
 
-export const POST = withAuth(
-  withRateLimit(async (req: Request) => {
-    try {
-      const body = await req.json();
+export const POST = withAuth(async (req: Request) => {
+  try {
+    const body = await req.json();
 
-      const validatedData = WorkExperienceSchema.parse(body);
+    const validation = CreateWorkExperienceSchema.safeParse(body);
 
-      const isPresent = validatedData.endDate === null;
-
-      const newExperience = await prisma.workExperience.create({
-        data: {
-          companyName: validatedData.companyName,
-          position: validatedData.position,
-          startDate: new Date(validatedData.startDate),
-          endDate: validatedData.endDate
-            ? new Date(validatedData.endDate)
-            : null,
-          isPresent,
-          description: validatedData.description || null,
-        },
-      });
-
+    if (!validation.success) {
       return NextResponse.json(
-        ApiResponse.success(
-          newExperience,
-          "Work experience berhasil ditambahkan",
-          201,
+        ApiResponse.error(
+          validation.error.errors.map((e) => e.message).join(", "),
+          400,
         ),
-        { status: 201 },
-      );
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return NextResponse.json(
-          ApiResponse.error(error.errors.map((e) => e.message).join(", "), 400),
-          { status: 400 },
-        );
-      }
-
-      console.error(error);
-
-      return NextResponse.json(
-        ApiResponse.error("Gagal menambahkan work experience", 500),
-        { status: 500 },
+        { status: 400 },
       );
     }
-  }, 10),
-);
+
+    const { companyName, position, startDate, endDate, description } =
+      validation.data;
+
+    const isPresent = endDate === null;
+
+    const newExperience = await prisma.workExperience.create({
+      data: {
+        companyName,
+        position,
+        startDate: new Date(startDate),
+        endDate: endDate ? new Date(endDate) : null,
+        isPresent,
+        description: description || null,
+      },
+    });
+
+    return NextResponse.json(
+      ApiResponse.success(
+        newExperience,
+        "Work experience berhasil ditambahkan",
+        201,
+      ),
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error(error);
+
+    return NextResponse.json(
+      ApiResponse.error("Gagal menambahkan work experience", 500),
+      { status: 500 },
+    );
+  }
+});

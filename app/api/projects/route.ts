@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { uploadToCloudinary } from "@/lib/cloudinary";
-import { CreateProjectSchema } from "@/lib/validation/project";
+import { CreateProjectSchema } from "@/lib/validation/projects";
 import { withAuth } from "@/lib/with-auth";
 import { ApiResponse } from "@/lib/response/api-response";
 import z from "zod";
@@ -63,13 +63,8 @@ export const POST = withAuth(async (req: Request) => {
   try {
     const formData = await req.formData();
 
-    const title = formData.get("title")?.toString();
-    const description = formData.get("description")?.toString() ?? "";
-    const link = formData.get("link")?.toString() ?? "";
-    const projectImageFile = formData.get("projectImage") as File | null;
     const skillsRaw = formData.get("skills") as string | null;
 
-    // Parse skills
     let skillsArray: string[] = [];
 
     if (skillsRaw) {
@@ -86,10 +81,10 @@ export const POST = withAuth(async (req: Request) => {
     }
 
     const validation = CreateProjectSchema.safeParse({
-      title,
-      description,
-      link,
-      projectImage: projectImageFile,
+      title: formData.get("title"),
+      description: formData.get("description"),
+      link: formData.get("link"),
+      projectImage: formData.get("projectImage"),
       skills: skillsArray,
     });
 
@@ -103,33 +98,33 @@ export const POST = withAuth(async (req: Request) => {
       );
     }
 
-    // 🔥 Cek apakah semua skill ID valid
-    if (skillsArray.length > 0) {
-      const validSkills = await prisma.skill.findMany({
-        where: { id: { in: skillsArray } },
-        select: { id: true },
-      });
+    const { title, description, link, projectImage, skills } = validation.data;
 
-      if (validSkills.length !== skillsArray.length) {
-        return NextResponse.json(
-          ApiResponse.error("Beberapa skill tidak valid", 400),
-          { status: 400 },
-        );
-      }
+    // 🔥 Validasi skill ID di DB
+    const validSkills = await prisma.skill.findMany({
+      where: { id: { in: skills } },
+      select: { id: true },
+    });
+
+    if (validSkills.length !== skills.length) {
+      return NextResponse.json(
+        ApiResponse.error("Beberapa skill tidak valid", 400),
+        { status: 400 },
+      );
     }
 
-    const imageUrl = projectImageFile
-      ? await uploadToCloudinary(projectImageFile, "projects")
+    const imageUrl = projectImage
+      ? await uploadToCloudinary(projectImage, "projects")
       : null;
 
     const newProject = await prisma.project.create({
       data: {
-        title: validation.data.title,
-        description: validation.data.description,
-        link: validation.data.link,
+        title,
+        description,
+        link,
         projectImage: imageUrl,
         techStack: {
-          create: validation.data.skills.map((skillId) => ({
+          create: skills.map((skillId) => ({
             skill: { connect: { id: skillId } },
           })),
         },
@@ -149,13 +144,6 @@ export const POST = withAuth(async (req: Request) => {
     );
   } catch (error) {
     console.error("Error creating project:", error);
-
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        ApiResponse.error(error.errors.map((e) => e.message).join(", "), 400),
-        { status: 400 },
-      );
-    }
 
     return NextResponse.json(
       ApiResponse.error("Gagal menyimpan project", 500),

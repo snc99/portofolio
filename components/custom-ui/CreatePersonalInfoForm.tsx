@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { ToastNotification } from "../Toast-Sweetalert2/Toast";
-import { CreatePersonalInfoSchema } from "@/lib/validation/personalInfo";
+import { CreatePersonalInfoSchema } from "@/lib/validation/profile";
 
 interface PersonalInfoProps {
   initialMotto: string;

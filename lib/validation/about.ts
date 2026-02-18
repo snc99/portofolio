@@ -1,9 +1,11 @@
 import { z } from "zod";
 
-export const AboutSchema = z.object({
+export const CreateAboutSchema = z.object({
   description: z
     .string()
-    .min(3, "Deskripsi harus memiliki minimal 3 karakter.")
-    .max(1000, "Deskripsi terlalu panjang, maksimal 1000 karakter.")
-    .nonempty("Deskripsi tidak boleh kosong."),
+    .trim()
+    .min(10, "Deskripsi minimal 10 karakter.")
+    .max(2000, "Deskripsi maksimal 2000 karakter."),
 });
+
+export const UpdateAboutSchema = CreateAboutSchema.partial();

@@ -5,7 +5,7 @@ import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { useRouter } from "next/navigation";
-import { UpdatePersonalInfoSchema } from "@/lib/validation/personalInfo";
+import { UpdatePersonalInfoSchema } from "@/lib/validation/profile";
 import { z } from "zod";
 
 type EditFormProps = {
@@ -105,7 +105,7 @@ const EditFormPersonalInfo = ({
             accept=".pdf"
             onChange={(e) => {
               const file = e.target.files?.[0] || null;
-              setNewCvFile(file); 
+              setNewCvFile(file);
             }}
             className={`mt-2 block w-full px-3 py-2 border 
     ${cvError ? "border-red-500 animate-shake" : "border-gray-300"}

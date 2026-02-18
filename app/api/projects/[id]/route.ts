@@ -1,12 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { deleteFromCloudinary, uploadToCloudinary } from "@/lib/cloudinary";
-import { CreateProjectSchema } from "@/lib/validation/project";
 import { ApiResponse } from "@/lib/response/api-response";
-import z from "zod";
 import { withAuth } from "@/lib/with-auth";
+import { UpdateProjectSchema } from "@/lib/validation/projects";
 
-export const PUT = withAuth(async (req, { params }) => {
+export const PATCH = withAuth(async (req, { params }) => {
   try {
     const { id } = await params!;
 
@@ -18,6 +17,9 @@ export const PUT = withAuth(async (req, { params }) => {
 
     const project = await prisma.project.findUnique({
       where: { id },
+      include: {
+        techStack: { select: { skillId: true } },
+      },
     });
 
     if (!project) {
@@ -29,31 +31,29 @@ export const PUT = withAuth(async (req, { params }) => {
 
     const formData = await req.formData();
 
-    const title = formData.get("title")?.toString();
-    const description = formData.get("description")?.toString() ?? "";
-    const link = formData.get("link")?.toString() ?? "";
-    const projectImageFile = formData.get("projectImage") as File | null;
-    const skillsRaw = formData.get("skills") as string;
+    const skillsRaw = formData.get("skills") as string | null;
 
-    let skills: string[] = [];
+    let parsedSkills: string[] | undefined;
 
-    try {
-      const parsed = JSON.parse(skillsRaw);
-      if (!Array.isArray(parsed)) throw new Error();
-      skills = parsed;
-    } catch {
-      return NextResponse.json(
-        ApiResponse.error("Format skills tidak valid", 400),
-        { status: 400 },
-      );
+    if (skillsRaw) {
+      try {
+        const parsed = JSON.parse(skillsRaw);
+        if (!Array.isArray(parsed)) throw new Error();
+        parsedSkills = parsed;
+      } catch {
+        return NextResponse.json(
+          ApiResponse.error("Format skills tidak valid", 400),
+          { status: 400 },
+        );
+      }
     }
 
-    const validation = CreateProjectSchema.safeParse({
-      title,
-      description,
-      link,
-      projectImage: projectImageFile ?? null,
-      skills,
+    const validation = UpdateProjectSchema.safeParse({
+      title: formData.get("title"),
+      description: formData.get("description"),
+      link: formData.get("link"),
+      projectImage: formData.get("projectImage"),
+      skills: parsedSkills,
     });
 
     if (!validation.success) {
@@ -66,14 +66,22 @@ export const PUT = withAuth(async (req, { params }) => {
       );
     }
 
-    // 🔥 Validasi skill ID
-    if (skills.length > 0) {
+    const { title, description, link, projectImage, skills } = validation.data;
+
+    // 🔥 Merge dengan existing
+    const finalTitle = title ?? project.title;
+    const finalDescription = description ?? project.description;
+    const finalLink = link ?? project.link;
+    const finalSkills = skills ?? project.techStack.map((s) => s.skillId);
+
+    // 🔥 Validasi skill ID kalau berubah
+    if (skills) {
       const validSkills = await prisma.skill.findMany({
-        where: { id: { in: skills } },
+        where: { id: { in: finalSkills } },
         select: { id: true },
       });
 
-      if (validSkills.length !== skills.length) {
+      if (validSkills.length !== finalSkills.length) {
         return NextResponse.json(
           ApiResponse.error("Beberapa skill tidak valid", 400),
           { status: 400 },
@@ -81,16 +89,36 @@ export const PUT = withAuth(async (req, { params }) => {
       }
     }
 
+    // 🔥 DETEKSI PERUBAHAN
+    const oldSkillIds = project.techStack.map((s) => s.skillId).sort();
+
+    const newSkillIds = [...finalSkills].sort();
+
+    const isTitleChanged = finalTitle !== project.title;
+    const isDescriptionChanged = finalDescription !== project.description;
+    const isLinkChanged = finalLink !== project.link;
+    const isImageChanged = !!projectImage;
+    const isSkillsChanged =
+      JSON.stringify(oldSkillIds) !== JSON.stringify(newSkillIds);
+
+    if (
+      !isTitleChanged &&
+      !isDescriptionChanged &&
+      !isLinkChanged &&
+      !isImageChanged &&
+      !isSkillsChanged
+    ) {
+      return NextResponse.json(
+        ApiResponse.error("Minimal satu perubahan harus dilakukan", 400),
+        { status: 400 },
+      );
+    }
+
     let imageUrl = project.projectImage;
 
-    // 🔥 Upload new image kalau ada
-    if (projectImageFile) {
-      const uploadedUrl = await uploadToCloudinary(
-        projectImageFile,
-        "projects",
-      );
+    if (projectImage) {
+      const uploadedUrl = await uploadToCloudinary(projectImage, "projects");
 
-      // delete image lama
       if (project.projectImage) {
         await deleteFromCloudinary(project.projectImage);
       }
@@ -101,23 +129,21 @@ export const PUT = withAuth(async (req, { params }) => {
     const updatedProject = await prisma.project.update({
       where: { id },
       data: {
-        title,
-        description,
-        link,
+        title: finalTitle,
+        description: finalDescription,
+        link: finalLink,
         projectImage: imageUrl,
-        techStack: {
-          deleteMany: {}, // sync relation
-          create: skills.map((skillId) => ({
-            skill: { connect: { id: skillId } },
-          })),
-        },
+        techStack: isSkillsChanged
+          ? {
+              deleteMany: {},
+              create: finalSkills.map((skillId) => ({
+                skill: { connect: { id: skillId } },
+              })),
+            }
+          : undefined,
       },
       include: {
-        techStack: {
-          include: {
-            skill: true,
-          },
-        },
+        techStack: { include: { skill: true } },
       },
     });
 
@@ -127,13 +153,6 @@ export const PUT = withAuth(async (req, { params }) => {
     );
   } catch (error) {
     console.error("Error updating project:", error);
-
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        ApiResponse.error(error.errors.map((e) => e.message).join(", "), 400),
-        { status: 400 },
-      );
-    }
 
     return NextResponse.json(
       ApiResponse.error("Gagal memperbarui project", 500),

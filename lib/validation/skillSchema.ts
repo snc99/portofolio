@@ -11,7 +11,7 @@ export const CreateSkillSchema = z.object({
       (file) => ["image/jpeg", "image/png", "image/jpg"].includes(file.type),
       {
         message: "File harus berupa gambar (JPG/PNG)",
-      }
+      },
     )
     .refine((file) => file.size <= 5 * 1024 * 1024, {
       message: "Ukuran gambar maksimal 5MB",
@@ -29,7 +29,7 @@ export const UpdateSkillSchema = z.object({
       (file) => ["image/jpeg", "image/png", "image/jpg"].includes(file.type),
       {
         message: "File harus berupa gambar (JPG/PNG)",
-      }
+      },
     )
     .refine((file) => file.size <= 5 * 1024 * 1024, {
       message: "Ukuran gambar maksimal 5MB",

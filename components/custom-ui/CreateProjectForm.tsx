@@ -7,7 +7,7 @@ import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { ToastNotification } from "../Toast-Sweetalert2/Toast";
-import { CreateProjectSchema } from "@/lib/validation/project";
+import { CreateProjectSchema } from "@/lib/validation/projects";
 import MultiSelectDropdown from "../dropdown/MultiSelectDropdown";
 
 const fetcher = (url: string) =>
@@ -40,7 +40,7 @@ const CreateProjectForm = () => {
         (skill: { id: string; name: string }) => ({
           value: skill.id,
           label: skill.name,
-        })
+        }),
       );
       setSkills(formattedSkills);
     }
@@ -48,7 +48,7 @@ const CreateProjectForm = () => {
 
   const handleFileChange = (
     event: React.ChangeEvent<HTMLInputElement>,
-    setFile: (file: File | null) => void
+    setFile: (file: File | null) => void,
   ) => {
     const file = event.target.files?.[0] || null;
     setFile(file);

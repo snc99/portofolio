@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UpdateSocialMediaSchema } from "@/lib/validation/sosmed";
 import { uploadToCloudinary, deleteFromCloudinary } from "@/lib/cloudinary";
 import { ApiResponse } from "@/lib/response/api-response";
-import z from "zod";
 import { withAuth } from "@/lib/with-auth";
 
 export const PATCH = withAuth(async (req, { params }) => {
@@ -49,16 +48,32 @@ export const PATCH = withAuth(async (req, { params }) => {
       );
     }
 
+    const isPlatformChanged = platform && platform !== existing.platform;
+
+    const isUrlChanged = url && url !== existing.url;
+
+    const isPhotoChanged = photoFile && photoFile instanceof File;
+
+    if (!isPlatformChanged && !isUrlChanged && !isPhotoChanged) {
+      return NextResponse.json(
+        ApiResponse.error("Minimal satu perubahan harus dilakukan", 400),
+        { status: 400 },
+      );
+    }
+
     const updateData: {
       platform?: string;
       url?: string;
       photo?: string;
     } = {};
 
-    // 🔥 Cegah duplicate platform
-    if (platform && platform !== existing.platform) {
+    // 🔥 Duplicate check hanya kalau platform berubah
+    if (isPlatformChanged) {
       const duplicate = await prisma.socialMedia.findFirst({
-        where: { platform },
+        where: {
+          platform,
+          NOT: { id }, // penting supaya gak ngecek dirinya sendiri
+        },
       });
 
       if (duplicate) {
@@ -68,17 +83,17 @@ export const PATCH = withAuth(async (req, { params }) => {
         );
       }
 
-      updateData.platform = platform;
+      updateData.platform = platform!;
     }
 
-    if (url && url !== existing.url) {
-      updateData.url = url;
+    if (isUrlChanged) {
+      updateData.url = url!;
     }
 
-    if (photoFile && photoFile instanceof File) {
+    if (isPhotoChanged && photoFile instanceof File) {
       const uploadedUrl = await uploadToCloudinary(photoFile, "social-media");
 
-      // hapus foto lama
+      // Hapus foto lama hanya kalau upload sukses
       if (existing.photo) {
         try {
           await deleteFromCloudinary(existing.photo);
@@ -88,13 +103,6 @@ export const PATCH = withAuth(async (req, { params }) => {
       }
 
       updateData.photo = uploadedUrl;
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        ApiResponse.success(existing, "Tidak ada perubahan"),
-        { status: 200 },
-      );
     }
 
     const updated = await prisma.socialMedia.update({
@@ -107,19 +115,11 @@ export const PATCH = withAuth(async (req, { params }) => {
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error updating social media:", error);
+    console.error("Error:", error);
 
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        ApiResponse.error(error.errors.map((e) => e.message).join(", "), 400),
-        { status: 400 },
-      );
-    }
-
-    return NextResponse.json(
-      ApiResponse.error("Gagal memperbarui social media", 500),
-      { status: 500 },
-    );
+    return NextResponse.json(ApiResponse.error("Terjadi kesalahan", 500), {
+      status: 500,
+    });
   }
 });
 

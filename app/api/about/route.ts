@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { AboutSchema } from "@/lib/validation/about";
+import { CreateAboutSchema, UpdateAboutSchema } from "@/lib/validation/about";
 import { ApiResponse } from "@/lib/response/api-response";
 import { withAuth } from "@/lib/with-auth";
 
@@ -22,7 +22,7 @@ export const POST = withAuth(async (req: Request) => {
   try {
     const body = await req.json();
 
-    const parsed = AboutSchema.safeParse(body);
+    const parsed = CreateAboutSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         ApiResponse.error(
@@ -65,7 +65,7 @@ export const PUT = withAuth(async (req: Request) => {
   try {
     const body = await req.json();
 
-    const parsed = AboutSchema.safeParse(body);
+    const parsed = UpdateAboutSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         ApiResponse.error(
@@ -76,28 +76,41 @@ export const PUT = withAuth(async (req: Request) => {
       );
     }
 
-    const { description } = parsed.data;
-
-    // ambil record pertama (kalau ada)
     const existing = await prisma.about.findFirst();
 
-    let about;
+    if (!existing) {
+      // kalau belum ada → create
+      const created = await prisma.about.create({
+        data: {
+          description: parsed.data.description!,
+        },
+      });
 
-    if (existing) {
-      // update
-      about = await prisma.about.update({
-        where: { id: existing.id },
-        data: { description },
-      });
-    } else {
-      // create kalau belum ada
-      about = await prisma.about.create({
-        data: { description },
-      });
+      return NextResponse.json(
+        ApiResponse.success(created, "About berhasil dibuat"),
+        { status: 201 },
+      );
     }
 
+    const newDescription = parsed.data.description?.trim();
+
+    // minimal 1 perubahan
+    if (!newDescription || newDescription === existing.description) {
+      return NextResponse.json(
+        ApiResponse.error("Minimal satu perubahan harus dilakukan", 400),
+        { status: 400 },
+      );
+    }
+
+    const updated = await prisma.about.update({
+      where: { id: existing.id },
+      data: {
+        description: newDescription,
+      },
+    });
+
     return NextResponse.json(
-      ApiResponse.success(about, "About berhasil diperbarui"),
+      ApiResponse.success(updated, "About berhasil diperbarui"),
       { status: 200 },
     );
   } catch (error) {

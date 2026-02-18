@@ -1,12 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { deleteFromCloudinary, uploadToCloudinary } from "@/lib/cloudinary";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { UpdateSkillSchema } from "@/lib/validation/skillSchema";
 import { withAuth } from "@/lib/with-auth";
 import { ApiResponse } from "@/lib/response/api-response";
-import z from "zod";
 
-export const PUT = withAuth(async (req, { params }) => {
+export const PATCH = withAuth(async (req, { params }) => {
   try {
     const { id } = await params!;
 
@@ -28,12 +27,10 @@ export const PUT = withAuth(async (req, { params }) => {
     }
 
     const formData = await req.formData();
-    const name = formData.get("name")?.toString().trim();
-    const photoFile = formData.get("photo");
 
-    const validation = await UpdateSkillSchema.safeParseAsync({
-      name,
-      photo: photoFile,
+    const validation = UpdateSkillSchema.safeParse({
+      name: formData.get("name"),
+      photo: formData.get("photo"),
     });
 
     if (!validation.success) {
@@ -46,25 +43,55 @@ export const PUT = withAuth(async (req, { params }) => {
       );
     }
 
+    const { name, photo } = validation.data;
+
+    const isNameChanged = typeof name === "string" && name !== existing.name;
+
+    const isPhotoChanged = !!photo;
+
+    if (!isNameChanged && !isPhotoChanged) {
+      return NextResponse.json(
+        ApiResponse.error("Minimal satu perubahan harus dilakukan", 400),
+        { status: 400 },
+      );
+    }
+
     const updateData: {
       name?: string;
       photo?: string;
     } = {};
 
-    if (name && name !== existing.name) {
-      updateData.name = name;
+    // 🔥 Cek duplicate kalau nama berubah
+    if (isNameChanged) {
+      const duplicate = await prisma.skill.findFirst({
+        where: {
+          name: { equals: name, mode: "insensitive" },
+          NOT: { id },
+        },
+      });
+
+      if (duplicate) {
+        return NextResponse.json(
+          ApiResponse.error("Skill dengan nama tersebut sudah ada", 409),
+          { status: 409 },
+        );
+      }
+
+      updateData.name = name!;
     }
 
-    if (photoFile && photoFile instanceof File) {
-      const uploadedUrl = await uploadToCloudinary(photoFile, "skills");
+    if (isPhotoChanged) {
+      const uploadedUrl = await uploadToCloudinary(photo!, "skills");
+
+      if (existing.photo) {
+        try {
+          await deleteFromCloudinary(existing.photo);
+        } catch (err) {
+          console.error("Cloudinary delete error:", err);
+        }
+      }
+
       updateData.photo = uploadedUrl;
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        ApiResponse.success(existing, "Tidak ada perubahan"),
-        { status: 200 },
-      );
     }
 
     const updatedSkill = await prisma.skill.update({
@@ -77,17 +104,7 @@ export const PUT = withAuth(async (req, { params }) => {
       { status: 200 },
     );
   } catch (error) {
-    console.error("❌ Error updating skill:", error);
-
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        ApiResponse.error(
-          error.errors.map((err) => err.message).join(", "),
-          400,
-        ),
-        { status: 400 },
-      );
-    }
+    console.error("Error updating skill:", error);
 
     return NextResponse.json(ApiResponse.error("Gagal mengupdate skill", 500), {
       status: 500,

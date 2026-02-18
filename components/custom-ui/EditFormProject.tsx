@@ -7,7 +7,7 @@ import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { ToastNotification } from "../Toast-Sweetalert2/Toast";
-import { CreateProjectSchema } from "@/lib/validation/project";
+import { CreateProjectSchema } from "@/lib/validation/projects";
 import MultiSelectDropdown from "../dropdown/MultiSelectDropdown";
 import Loading from "./Loading";
 import ErrorServer from "../card/errorServer";
@@ -44,11 +44,11 @@ const EditProjectForm = () => {
 
   const { data: skillsData, error: skillsError } = useSWR(
     "/api/skill",
-    fetcher
+    fetcher,
   );
   const { data: projectData, error: projectError } = useSWR(
     id ? `/api/projects/${id}` : null,
-    fetcher
+    fetcher,
   );
 
   useEffect(() => {
@@ -57,7 +57,7 @@ const EditProjectForm = () => {
         skillsData.map((skill: { id: string; name: string }) => ({
           value: skill.id,
           label: skill.name,
-        }))
+        })),
       );
     }
   }, [skillsData]);
@@ -75,14 +75,14 @@ const EditProjectForm = () => {
             (stack: { skill: { id: string; name: string } }) => ({
               value: stack.skill.id,
               label: stack.skill.name,
-            })
+            }),
           ) ?? [],
       }));
     }
   }, [projectData]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
@@ -129,7 +129,7 @@ const EditProjectForm = () => {
     }
     requestData.append(
       "skills",
-      JSON.stringify(formData.selectedSkills.map((s) => s.value))
+      JSON.stringify(formData.selectedSkills.map((s) => s.value)),
     );
 
     try {
@@ -142,7 +142,7 @@ const EditProjectForm = () => {
 
       ToastNotification(
         "success",
-        `${formData.title} has been successfully updated`
+        `${formData.title} has been successfully updated`,
       );
       router.push("/dashboard/project");
     } catch (error) {

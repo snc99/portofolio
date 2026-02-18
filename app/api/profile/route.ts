@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
-  CreatePersonalInfoSchema,
-  UpdatePersonalInfoSchema,
-} from "@/lib/validation/personalInfo";
+  UpdateProfileSchema,
+  CreateProfileSchema,
+} from "@/lib/validation/profile";
 import {
   deleteFromCloudinary,
   updateCloudinaryFile,
@@ -31,10 +31,11 @@ export const GET = withAuth(async () => {
 export const POST = withAuth(async (req) => {
   try {
     const formData = await req.formData();
-    const motto = formData.get("motto") as string;
-    const cvFile = formData.get("cv") as File;
 
-    const result = CreatePersonalInfoSchema.safeParse({ motto, cv: cvFile });
+    const result = CreateProfileSchema.safeParse({
+      motto: formData.get("motto"),
+      cv: formData.get("cv"),
+    });
 
     if (!result.success) {
       return NextResponse.json(
@@ -46,6 +47,8 @@ export const POST = withAuth(async (req) => {
       );
     }
 
+    const { motto, cv } = result.data;
+
     const existingData = await prisma.profile.findFirst();
 
     if (existingData && existingData.motto === motto) {
@@ -55,8 +58,8 @@ export const POST = withAuth(async (req) => {
       );
     }
 
-    const uploadedUrl = await uploadToCloudinary(cvFile, "cv_files");
-    const originalName = cvFile.name;
+    const uploadedUrl = await uploadToCloudinary(cv, "cv_files");
+    const originalName = cv.name;
 
     let profile;
 
@@ -96,10 +99,11 @@ export const PUT = withAuth(async (req) => {
     }
 
     const formData = await req.formData();
-    const motto = formData.get("motto") as string;
-    const cvFile = formData.get("cv") as File | null;
 
-    const result = UpdatePersonalInfoSchema.safeParse({ motto, cv: cvFile });
+    const result = UpdateProfileSchema.safeParse({
+      motto: formData.get("motto"),
+      cv: formData.get("cv"),
+    });
 
     if (!result.success) {
       return NextResponse.json(
@@ -111,29 +115,40 @@ export const PUT = withAuth(async (req) => {
       );
     }
 
-    // tidak ada perubahan
-    if (existing.motto.trim() === motto.trim() && !cvFile) {
+    const { motto, cv } = result.data;
+
+    const isMottoChanged =
+      typeof motto === "string" && existing.motto.trim() !== motto.trim();
+
+    const isCvChanged = !!cv;
+
+    if (!isMottoChanged && !isCvChanged) {
       return NextResponse.json(
-        ApiResponse.success(existing, "Tidak ada perubahan"),
-        { status: 200 },
+        ApiResponse.error("Minimal satu perubahan harus dilakukan", 400),
+        { status: 400 },
       );
     }
 
     let cvUrl = existing.cvLink;
+    let cvFilename = existing.cvFilename;
 
-    if (cvFile) {
-      cvUrl = await updateCloudinaryFile(
+    if (cv) {
+      const uploadedUrl = await updateCloudinaryFile(
         existing.cvLink ?? "",
-        cvFile,
+        cv,
         "cv_files",
       );
+
+      cvUrl = uploadedUrl;
+      cvFilename = cv.name;
     }
 
     const updated = await prisma.profile.update({
       where: { id: existing.id },
       data: {
-        motto,
+        motto: isMottoChanged ? motto : existing.motto,
         cvLink: cvUrl,
+        cvFilename: cvFilename,
       },
     });
 
