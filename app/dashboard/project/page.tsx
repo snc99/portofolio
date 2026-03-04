@@ -1,149 +1,250 @@
 "use client";
 
-import useSWR from "swr";
-import Image from "next/image";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 import Loading from "@/components/custom-ui/Loading";
-import {
-  DeleteConfirmation,
-  ToastNotification,
-} from "@/components/Toast-Sweetalert2/Toast";
-import { useRouter } from "next/navigation";
 import ErrorServer from "@/components/card/errorServer";
+import { toast } from "sonner";
 
-interface Project {
+import ProjectSection from "@/components/custom-ui/project/ProjectSection";
+import CreateProjectModal from "@/components/custom-ui/project/CreateProjectModal";
+import EditProjectModal from "@/components/custom-ui/project/EditProjectModal";
+import DeleteProjectModal from "@/components/custom-ui/project/DeleteProjectModal";
+
+import { projectApi } from "@/modules/project/project.api";
+import { useProjectForm } from "@/modules/project/useProjectForm";
+import { mapZodErrors } from "@/shared/utils/mapZodErrors";
+import { skillApi } from "@/modules/skills/skill-api";
+
+interface Skill {
   id: string;
-  title: string;
-  description?: string;
-  link?: string;
-  projectImage?: string;
-  techStack: { skill: { photo: string; name: string } }[];
+  name: string;
+  photo: string;
 }
 
-const fetcher = async (url: string): Promise<Project[]> => {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error("Failed to fetch data");
-  }
-  return res.json();
-};
+interface SkillOption {
+  value: string;
+  label: string;
+}
+
+interface ProjectItem {
+  id: string;
+  title: string;
+  link?: string | null;
+  description?: string | null;
+  projectImage?: string | null;
+  skills: Skill[];
+  createdAt: string;
+}
 
 export default function ProjectPage() {
-  const router = useRouter();
+  const [data, setData] = useState<ProjectItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  const handleEdit = (id: string) => {
-    router.push(`/dashboard/project/edit/${id}`);
-  };
+  const [showCreate, setShowCreate] = useState(false);
+  const [showEdit, setShowEditModal] = useState(false);
+  const [deleteItem, setDeleteItem] = useState<ProjectItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDelete = async (
-    id: string,
-    title: string,
-    mutate: () => void
-  ) => {
-    const isConfirmed = await DeleteConfirmation();
-    if (!isConfirmed) return;
+  const [editingItem, setEditingItem] = useState<any | null>(null);
 
+  const projectCreateForm = useProjectForm();
+  const projectEditForm = useProjectForm(editingItem ?? undefined);
+
+  const [skillOptions, setSkillOptions] = useState<SkillOption[]>([]);
+
+  useEffect(() => {
+    loadSkills();
+    loadData();
+  }, []);
+
+  const loadData = async () => {
     try {
-      const response = await fetch(`/api/projects/${id}`, {
-        method: "DELETE",
-      });
+      setLoading(true);
+      setError(false);
 
-      if (!response.ok) {
-        throw new Error("Failed to delete project");
-      }
-
-      mutate();
-      ToastNotification("success", `${title} deleted successfully`);
-    } catch (error) {
-      console.error("Error deleting project:", error);
-      ToastNotification("error", "Failed to delete project");
+      const res = await projectApi.get();
+      setData(res.data.data?.items ?? []);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const {
-    data: projects,
-    error,
-    isLoading,
-    mutate,
-  } = useSWR<Project[]>("/api/projects", fetcher);
+  const loadSkills = async () => {
+    try {
+      const res = await skillApi.getOptions();
+      setSkillOptions(res.data.data ?? []);
+    } catch {
+      console.error("Failed to load skills");
+    }
+  };
 
-  if (isLoading) return <Loading />;
+  // 🔥 Helper FormData Builder
+  const buildFormData = (values: any) => {
+    const formData = new FormData();
+
+    formData.append("title", values.title);
+    formData.append("description", values.description || "");
+    formData.append("link", values.link || "");
+
+    if (values.projectImage) {
+      formData.append("projectImage", values.projectImage);
+    }
+
+    values.skillIds.forEach((id: string) => {
+      formData.append("skillIds", id);
+    });
+
+    return formData;
+  };
+
+  const handleCreate = async () => {
+    console.log("Creating with values:", projectCreateForm.values);
+    projectCreateForm.setLoading(true);
+    projectCreateForm.setErrors({});
+
+    try {
+      const formData = buildFormData(projectCreateForm.values);
+      const res = await projectApi.create(formData);
+
+      setData((prev) => [...prev, res.data.data]);
+      setShowCreate(false);
+      projectCreateForm.reset();
+
+      toast.success("Project added");
+    } catch (err: any) {
+      const errorData = err?.response?.data;
+
+      if (errorData?.error?.fields) {
+        projectCreateForm.setErrors(mapZodErrors(errorData.error.fields));
+        return;
+      }
+
+      toast.error(errorData?.error?.message || "Failed to create");
+    } finally {
+      projectCreateForm.setLoading(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!editingItem) return;
+
+    projectEditForm.setLoading(true);
+    projectEditForm.setErrors({});
+
+    try {
+      const formData = buildFormData(projectEditForm.values);
+
+      const res = await projectApi.update(editingItem.id, formData);
+
+      setData((prev) =>
+        prev.map((item) => (item.id === editingItem.id ? res.data.data : item)),
+      );
+
+      setShowEditModal(false);
+      setEditingItem(null);
+      projectEditForm.reset();
+
+      toast.success("Updated successfully");
+    } catch (err: any) {
+      const errorData = err?.response?.data;
+
+      if (errorData?.error?.fields) {
+        projectEditForm.setErrors(mapZodErrors(errorData.error.fields));
+        return;
+      }
+
+      toast.error(errorData?.error?.message || "Failed to update");
+    } finally {
+      projectEditForm.setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteItem) return;
+
+    setIsDeleting(true);
+
+    try {
+      await projectApi.delete(deleteItem.id);
+
+      setData((prev) => prev.filter((item) => item.id !== deleteItem.id));
+
+      toast.success("Project deleted");
+      setDeleteItem(null);
+    } catch (err: any) {
+      const errorMessage =
+        err?.response?.data?.error?.message || "Failed to delete";
+
+      toast.error(errorMessage);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (loading) return <Loading />;
   if (error) return <ErrorServer />;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-center mb-6">Project List</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects?.map((project) => (
-          <Card key={project.id} className="bg-white shadow-lg rounded-lg">
-            <CardHeader>
-              <div className="w-full h-[200px] relative overflow-hidden rounded-lg">
-                <Image
-                  src={project.projectImage || "/default-project.jpg"}
-                  alt={project.title}
-                  width={400}
-                  height={250}
-                  className="rounded-lg object-cover w-full"
-                />
-              </div>
-              <CardTitle className="mt-4 text-lg font-semibold">
-                {project.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">
-                {project.description || "No description available"}
-              </p>
-              <div className="mt-4 flex justify-between items-center">
-                {project.link && (
-                  <a
-                    href={project.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 font-semibold hover:underline"
-                  >
-                    View Project
-                  </a>
-                )}
-                <div className="flex space-x-2">
-                  {project.techStack ? (
-                    project.techStack.map((tech, index) => (
-                      <div key={index} className="flex items-center space-x-1">
-                        <Image
-                          src={tech.skill.photo}
-                          alt="Tech Stack"
-                          width={24}
-                          height={24}
-                          className="rounded-full border-2 border-gray-600"
-                        />
-                      </div>
-                    ))
-                  ) : (
-                    <span>No tech stack available</span>
-                  )}
-                </div>
-              </div>
-              <div className="mt-4 flex justify-end space-x-2">
-                <button
-                  className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                  onClick={() => handleEdit(project.id)}
-                >
-                  Edit
-                </button>
-                <button
-                  className="px-3 py-1 bg-rose-300 text-rose-800 rounded-md hover:bg-[#FF2A00] hover:text-white text-sm"
-                  onClick={() =>
-                    handleDelete(project.id, project.title, mutate)
-                  }
-                >
-                  Delete
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+    <div className="min-h-screen bg-gray-50">
+      <div className="w-full px-8 py-10 space-y-10">
+        <ProjectSection
+          data={data}
+          onDelete={(id) => {
+            const item = data.find((d) => d.id === id);
+            if (item) setDeleteItem(item);
+          }}
+          onRequestCreate={() => setShowCreate(true)}
+          onRequestEdit={(item) => {
+            setEditingItem({
+              ...item,
+              skillIds: item.skills.map((s: Skill) => s.id),
+            });
+            setShowEditModal(true);
+          }}
+        />
       </div>
+
+      <CreateProjectModal
+        open={showCreate}
+        onClose={() => {
+          projectCreateForm.reset();
+          setShowCreate(false);
+        }}
+        values={projectCreateForm.values}
+        setValues={projectCreateForm.setValues}
+        onSubmit={handleCreate}
+        skillOptions={skillOptions}
+        fileRef={projectCreateForm.fileRef}
+        isLoading={projectCreateForm.loading}
+        errors={projectCreateForm.errors}
+      />
+
+      <EditProjectModal
+        open={showEdit}
+        onClose={() => {
+          projectEditForm.reset();
+          setShowEditModal(false);
+          setEditingItem(null);
+        }}
+        values={projectEditForm.values}
+        setValues={projectEditForm.setValues}
+        onSubmit={handleUpdate}
+        skillOptions={skillOptions}
+        fileRef={projectEditForm.fileRef}
+        isLoading={projectEditForm.loading}
+        errors={projectEditForm.errors}
+      />
+
+      <DeleteProjectModal
+        open={!!deleteItem}
+        onClose={() => setDeleteItem(null)}
+        onConfirm={handleDelete}
+        projectTitle={deleteItem?.title}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

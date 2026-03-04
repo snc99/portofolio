@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/middlewares/auth";
-import { prisma } from "@/lib/prisma";
-import { ApiResponse } from "@/lib/response/api-response";
+import { requireAuth } from "@/infrastructure/security/auth";
+import { prisma } from "@/infrastructure/database/prisma";
 
 export async function GET() {
   try {
@@ -17,18 +16,40 @@ export async function GET() {
     });
 
     if (!admin) {
-      return NextResponse.json(ApiResponse.error("User tidak ditemukan", 404), {
-        status: 404,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ADMIN_NOT_FOUND",
+            message: "User not found",
+          },
+        },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json(
-      ApiResponse.success(admin, "Profil berhasil diambil"),
+      {
+        success: true,
+        message: "Profile retrieved successfully",
+        data: {
+          id: admin.id,
+          name: admin.nama, // mapping tetap di BE (ini bagus)
+          email: admin.email,
+        },
+      },
       { status: 200 },
     );
-  } catch (err) {
-    return NextResponse.json(ApiResponse.error("Unauthorized", 401), {
-      status: 401,
-    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Unauthorized",
+        },
+      },
+      { status: 401 },
+    );
   }
 }

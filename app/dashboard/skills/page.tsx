@@ -1,50 +1,200 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
-import SkillTable from "@/components/custom-ui/Table-Skill";
+import Loading from "@/components/custom-ui/Loading";
 import ErrorServer from "@/components/card/errorServer";
+import { toast } from "sonner";
+import SkillsCard from "@/components/custom-ui/skills/SkillsCard";
+import CreateSkillModal from "@/components/custom-ui/skills/CreateSkillModal";
+import EditSkillModal from "@/components/custom-ui/skills/EditSkillModal";
+import { skillApi } from "@/modules/skills/skill-api";
+import { useSkillForm } from "@/modules/skills/useSkillForm";
 
-interface Skill {
+interface SkillItem {
   id: string;
   name: string;
-  photo: string;
+  photo?: string;
+  createdAt: string;
 }
 
-const SkillPage = () => {
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+export default function SkillPage() {
+  const [skillsData, setSkillsData] = useState<SkillItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [editingSkill, setEditingSkill] = useState<SkillItem | null>(null);
+
+  const skillCreateForm = useSkillForm();
+  const skillEditForm = useSkillForm(editingSkill ?? undefined);
 
   useEffect(() => {
-    const fetchSkills = async () => {
-      try {
-        const response = await fetch("/api/skill");
-        if (!response.ok) throw new Error("Gagal mengambil data skill.");
-
-        const data: Skill[] = await response.json();
-        setSkills(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Terjadi kesalahan.");
-      }
-    };
-
-    fetchSkills();
+    loadData();
   }, []);
 
-  return (
-    <>
-      <div className="flex items-center justify-center mb-12">
-        <Sparkles className="h-6 w-6 text-blue-500 mr-2" />
-        <h2 className="text-2xl font-semibold text-gray-800">Skill</h2>
-      </div>
-      {error ? (
-        <ErrorServer />
-      ) : (
-        skills && <SkillTable skills={skills} />
-      )}
-    </>
-  );
-};
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(false);
 
-export default SkillPage;
+      const res = await skillApi.get();
+      setSkillsData(res.data.data?.items ?? []);
+    } catch (err) {
+      // 401 handled by interceptor
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // CREATE
+  const handleCreateSkill = async () => {
+    skillCreateForm.setLoading(true);
+    skillCreateForm.setErrors({});
+
+    try {
+      const formData = new FormData();
+      formData.append("name", skillCreateForm.values.name);
+
+      if (skillCreateForm.values.photo) {
+        formData.append("photo", skillCreateForm.values.photo);
+      }
+
+      const res = await skillApi.create(formData);
+
+      setSkillsData((prev) => [...prev, res.data.data]);
+      setShowCreateModal(false);
+      skillCreateForm.reset();
+
+      toast.success("Skill added successfully");
+    } catch (err: any) {
+      const errorData = err?.response?.data;
+
+      if (errorData?.error?.fields) {
+        const formatted: Record<string, string> = {};
+        Object.keys(errorData.error.fields).forEach((key) => {
+          formatted[key] = errorData.error.fields[key][0];
+        });
+
+        skillCreateForm.setErrors(formatted);
+        return;
+      }
+
+      toast.error(errorData?.error?.message || "Failed to create skill");
+    } finally {
+      skillCreateForm.setLoading(false);
+    }
+  };
+
+  // UPDATE
+  const handleUpdateSkill = async () => {
+    if (!editingSkill) return;
+
+    skillEditForm.setLoading(true);
+    skillEditForm.setErrors({});
+
+    try {
+      const formData = new FormData();
+      formData.append("name", skillEditForm.values.name);
+
+      if (skillEditForm.values.photo) {
+        formData.append("photo", skillEditForm.values.photo);
+      }
+
+      const res = await skillApi.update(editingSkill.id, formData);
+
+      setSkillsData((prev) =>
+        prev.map((item) =>
+          item.id === editingSkill.id ? res.data.data : item,
+        ),
+      );
+
+      setShowEditModal(false);
+      setEditingSkill(null);
+      skillEditForm.reset();
+
+      toast.success("Skill updated successfully");
+    } catch (err: any) {
+      const errorData = err?.response?.data;
+
+      if (errorData?.error?.fields) {
+        const formatted: Record<string, string> = {};
+        Object.keys(errorData.error.fields).forEach((key) => {
+          formatted[key] = errorData.error.fields[key][0];
+        });
+
+        skillEditForm.setErrors(formatted);
+        return;
+      }
+
+      toast.error(errorData?.error?.message || "Failed to update skill");
+    } finally {
+      skillEditForm.setLoading(false);
+    }
+  };
+
+  // DELETE
+  const handleDeleteSkill = async (id: string) => {
+    try {
+      await skillApi.delete(id);
+
+      setSkillsData((prev) => prev.filter((item) => item.id !== id));
+
+      toast.success("Skill deleted successfully");
+    } catch (err: any) {
+      const errorData = err?.response?.data;
+
+      toast.error(errorData?.error?.message || "Failed to delete skill");
+    }
+  };
+
+  if (loading) return <Loading />;
+  if (error) return <ErrorServer />;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="w-full px-8 py-10 space-y-10">
+        <SkillsCard
+          data={skillsData}
+          onDelete={handleDeleteSkill}
+          onRequestCreate={() => setShowCreateModal(true)}
+          onRequestEdit={(item) => {
+            setEditingSkill(item);
+            setShowEditModal(true);
+          }}
+        />
+      </div>
+
+      <CreateSkillModal
+        open={showCreateModal}
+        onClose={() => {
+          skillCreateForm.reset();
+          setShowCreateModal(false);
+        }}
+        values={skillCreateForm.values}
+        setValues={skillCreateForm.setValues}
+        fileRef={skillCreateForm.fileRef}
+        onSubmit={handleCreateSkill}
+        isLoading={skillCreateForm.loading}
+        errors={skillCreateForm.errors}
+      />
+
+      <EditSkillModal
+        open={showEditModal}
+        onClose={() => {
+          skillEditForm.reset();
+          setShowEditModal(false);
+          setEditingSkill(null);
+        }}
+        values={skillEditForm.values}
+        setValues={skillEditForm.setValues}
+        fileRef={skillEditForm.fileRef}
+        onSubmit={handleUpdateSkill}
+        isLoading={skillEditForm.loading}
+        errors={skillEditForm.errors}
+      />
+    </div>
+  );
+}

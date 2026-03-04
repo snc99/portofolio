@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { CreateSkillSchema } from "@/lib/validation/skillSchema";
-import { uploadToCloudinary } from "@/lib/cloudinary";
-import { withAuth } from "@/lib/with-auth";
-import { ApiResponse } from "@/lib/response/api-response";
+import { prisma } from "@/infrastructure/database/prisma";
+import { CreateSkillSchema } from "@/shared/validation/skillSchema";
+import { uploadToCloudinary } from "@/infrastructure/storage/cloudinary";
+import { withAuth } from "@/shared/http/with-auth";
+import { withErrorHandler } from "@/shared/http/with-error-handler";
 
-export const GET = withAuth(async (req: Request) => {
-  try {
+export const GET = withErrorHandler(
+  withAuth(async (req: Request) => {
     const { searchParams } = new URL(req.url);
 
     const page = Number(searchParams.get("page") ?? 1);
     const limit = Number(searchParams.get("limit") ?? 10);
 
-    const safePage = page < 1 ? 1 : page;
-    const safeLimit = limit > 50 ? 50 : limit;
+    const safePage = page < 1 || Number.isNaN(page) ? 1 : page;
+    const safeLimit =
+      limit < 1 || Number.isNaN(limit) ? 10 : limit > 50 ? 50 : limit;
 
     const skip = (safePage - 1) * safeLimit;
 
@@ -27,31 +28,26 @@ export const GET = withAuth(async (req: Request) => {
     ]);
 
     return NextResponse.json(
-      ApiResponse.success(
-        {
+      {
+        success: true,
+        message: "Skills retrieved successfully",
+        data: {
           items,
           meta: {
             page: safePage,
             limit: safeLimit,
-            total,
+            totalItems: total,
             totalPages: Math.ceil(total / safeLimit),
           },
         },
-        "Skill berhasil diambil",
-      ),
+      },
       { status: 200 },
     );
-  } catch (error) {
-    console.error("❌ Error fetching skills:", error);
+  }),
+);
 
-    return NextResponse.json(ApiResponse.error("Gagal mengambil skill", 500), {
-      status: 500,
-    });
-  }
-});
-
-export const POST = withAuth(async (req: Request) => {
-  try {
+export const POST = withErrorHandler(
+  withAuth(async (req: Request) => {
     const formData = await req.formData();
 
     const validation = CreateSkillSchema.safeParse({
@@ -59,30 +55,44 @@ export const POST = withAuth(async (req: Request) => {
       photo: formData.get("photo"),
     });
 
+    // 🔴 Validation error
     if (!validation.success) {
       return NextResponse.json(
-        ApiResponse.error(
-          validation.error.errors.map((e) => e.message).join(", "),
-          400,
-        ),
+        {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid input data",
+            fields: validation.error.flatten().fieldErrors,
+          },
+        },
         { status: 400 },
       );
     }
 
     const { name, photo } = validation.data;
 
-    // 🔥 Cegah duplicate skill name
+    // 🔴 Duplicate check (case insensitive)
     const existing = await prisma.skill.findFirst({
-      where: { name: { equals: name, mode: "insensitive" } },
+      where: {
+        name: { equals: name, mode: "insensitive" },
+      },
     });
 
     if (existing) {
       return NextResponse.json(
-        ApiResponse.error("Skill dengan nama tersebut sudah ada", 409),
+        {
+          success: false,
+          error: {
+            code: "SKILL_ALREADY_EXISTS",
+            message: "A skill with this name already exists",
+          },
+        },
         { status: 409 },
       );
     }
 
+    // 🟢 Upload image
     const uploadedUrl = await uploadToCloudinary(photo, "skills");
 
     const newSkill = await prisma.skill.create({
@@ -93,14 +103,12 @@ export const POST = withAuth(async (req: Request) => {
     });
 
     return NextResponse.json(
-      ApiResponse.success(newSkill, "Skill berhasil dibuat", 201),
+      {
+        success: true,
+        message: "Skill created successfully",
+        data: newSkill,
+      },
       { status: 201 },
     );
-  } catch (error) {
-    console.error("Error creating skill:", error);
-
-    return NextResponse.json(ApiResponse.error("Gagal membuat skill", 500), {
-      status: 500,
-    });
-  }
-});
+  }),
+);

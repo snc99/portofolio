@@ -1,9 +1,10 @@
 "use client";
 
-import { formatDateToIndonesia } from "@/lib/formatDate";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { Briefcase, Calendar, MapPin, Building2 } from "lucide-react";
+import { formatWorkPeriod } from "@/shared/utils/formatPeriod";
+import { calculateWorkDuration } from "@/shared/utils/workDuration";
 
 interface WorkExperienceData {
   id: number;
@@ -48,15 +49,18 @@ export default function WorkExperience() {
     },
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, x: -30 },
+  const itemVariants: Variants = {
+    hidden: {
+      opacity: 0,
+      x: -50,
+    },
     visible: {
       opacity: 1,
       x: 0,
       transition: {
         type: "spring",
         stiffness: 100,
-        damping: 15,
+        damping: 20,
       },
     },
   };
@@ -154,18 +158,25 @@ export default function WorkExperience() {
                 >
                   {/* Date */}
                   <div
-                    className={`md:w-1/2 ${isEven ? "md:text-right" : "md:text-left"}`}
+                    className={`md:w-1/2 ${
+                      isEven ? "md:text-right" : "md:text-left"
+                    }`}
                   >
-                    <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full border border-pastel-green shadow-sm">
-                      <Calendar size={16} className="text-[#2d4a2d]" />
-                      <span className="text-sm font-medium text-gray-700">
-                        {formatDateToIndonesia(exp.startDate)} -{" "}
-                        {exp.isPresent ? (
-                          <span className="text-[#2d4a2d] font-semibold">
-                            Present
-                          </span>
-                        ) : (
-                          formatDateToIndonesia(exp.endDate || "")
+                    <div className="flex flex-col text-sm font-medium text-gray-700">
+                      <Calendar size={16} className="text-gray-400 mb-1" />
+                      <span>
+                        {formatWorkPeriod(
+                          exp.startDate,
+                          exp.endDate,
+                          exp.isPresent,
+                        )}
+                      </span>
+
+                      <span className="text-xs text-gray-400 font-normal">
+                        {calculateWorkDuration(
+                          exp.startDate,
+                          exp.endDate,
+                          exp.isPresent,
                         )}
                       </span>
                     </div>

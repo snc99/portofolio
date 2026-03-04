@@ -1,17 +1,25 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { withAuth } from "@/lib/with-auth";
-import { ApiResponse } from "@/lib/response/api-response";
-import { UpdateWorkExperienceSchema } from "@/lib/validation/workExperience";
+import { prisma } from "@/infrastructure/database/prisma";
+import { withAuth } from "@/shared/http/with-auth";
+import { UpdateWorkExperienceSchema } from "@/shared/validation/workExperience";
+import { withErrorHandler } from "@/shared/http/with-error-handler";
 
-export const PATCH = withAuth(async (req, { params }) => {
-  try {
-    const { id } = await params!;
+export const PATCH = withErrorHandler(
+  withAuth(async (req: Request, context) => {
+    const resolvedParams = await context.params;
+    const id = resolvedParams?.id;
 
     if (!id || id.trim() === "") {
-      return NextResponse.json(ApiResponse.error("ID tidak valid", 400), {
-        status: 400,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_ID",
+            message: "Invalid work experience ID",
+          },
+        },
+        { status: 400 },
+      );
     }
 
     const existing = await prisma.workExperience.findUnique({
@@ -20,21 +28,46 @@ export const PATCH = withAuth(async (req, { params }) => {
 
     if (!existing) {
       return NextResponse.json(
-        ApiResponse.error("Work experience tidak ditemukan", 404),
+        {
+          success: false,
+          error: {
+            code: "WORK_EXPERIENCE_NOT_FOUND",
+            message: "Work experience not found",
+          },
+        },
         { status: 404 },
       );
     }
 
-    const body = await req.json();
+    let body: unknown;
+
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_JSON",
+            message: "Request body must be valid JSON",
+          },
+        },
+        { status: 400 },
+      );
+    }
 
     const validation = UpdateWorkExperienceSchema.safeParse(body);
 
     if (!validation.success) {
       return NextResponse.json(
-        ApiResponse.error(
-          validation.error.errors.map((e) => e.message).join(", "),
-          400,
-        ),
+        {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid input data",
+            fields: validation.error.flatten().fieldErrors,
+          },
+        },
         { status: 400 },
       );
     }
@@ -42,11 +75,9 @@ export const PATCH = withAuth(async (req, { params }) => {
     const { companyName, position, startDate, endDate, description } =
       validation.data;
 
-    // 🔥 Merge dengan existing
+    // 🔥 Merge with existing
     const finalCompanyName = companyName ?? existing.companyName;
-
     const finalPosition = position ?? existing.position;
-
     const finalStartDate = startDate ? new Date(startDate) : existing.startDate;
 
     const finalEndDate =
@@ -61,33 +92,25 @@ export const PATCH = withAuth(async (req, { params }) => {
     const finalDescription =
       description !== undefined ? description || null : existing.description;
 
-    // 🔥 DETEKSI PERUBAHAN
-    const isCompanyChanged = finalCompanyName !== existing.companyName;
-
-    const isPositionChanged = finalPosition !== existing.position;
-
-    const isStartDateChanged =
-      finalStartDate.getTime() !== existing.startDate.getTime();
-
-    const isEndDateChanged =
+    // 🔥 Change detection
+    const isChanged =
+      finalCompanyName !== existing.companyName ||
+      finalPosition !== existing.position ||
+      finalStartDate.getTime() !== existing.startDate.getTime() ||
       (existing.endDate?.getTime() ?? null) !==
-      (finalEndDate?.getTime() ?? null);
+        (finalEndDate?.getTime() ?? null) ||
+      (finalDescription ?? null) !== (existing.description ?? null) ||
+      finalIsPresent !== existing.isPresent;
 
-    const isDescriptionChanged =
-      (finalDescription ?? null) !== (existing.description ?? null);
-
-    const isPresentChanged = finalIsPresent !== existing.isPresent;
-
-    if (
-      !isCompanyChanged &&
-      !isPositionChanged &&
-      !isStartDateChanged &&
-      !isEndDateChanged &&
-      !isDescriptionChanged &&
-      !isPresentChanged
-    ) {
+    if (!isChanged) {
       return NextResponse.json(
-        ApiResponse.error("Minimal satu perubahan harus dilakukan", 400),
+        {
+          success: false,
+          error: {
+            code: "NO_CHANGES",
+            message: "At least one change must be made",
+          },
+        },
         { status: 400 },
       );
     }
@@ -105,27 +128,32 @@ export const PATCH = withAuth(async (req, { params }) => {
     });
 
     return NextResponse.json(
-      ApiResponse.success(updated, "Work experience berhasil diperbarui"),
+      {
+        success: true,
+        message: "Work experience updated successfully",
+        data: updated,
+      },
       { status: 200 },
     );
-  } catch (error) {
-    console.error(error);
+  }),
+);
 
-    return NextResponse.json(
-      ApiResponse.error("Gagal memperbarui work experience", 500),
-      { status: 500 },
-    );
-  }
-});
-
-export const DELETE = withAuth(async (req, { params }) => {
-  try {
-    const { id } = await params!;
+export const DELETE = withErrorHandler(
+  withAuth(async (req: Request, context) => {
+    const resolvedParams = await context.params;
+    const id = resolvedParams?.id;
 
     if (!id || id.trim() === "") {
-      return NextResponse.json(ApiResponse.error("ID tidak valid", 400), {
-        status: 400,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_ID",
+            message: "Invalid work experience ID",
+          },
+        },
+        { status: 400 },
+      );
     }
 
     const existing = await prisma.workExperience.findUnique({
@@ -138,7 +166,13 @@ export const DELETE = withAuth(async (req, { params }) => {
 
     if (!existing) {
       return NextResponse.json(
-        ApiResponse.error("Work experience tidak ditemukan", 404),
+        {
+          success: false,
+          error: {
+            code: "WORK_EXPERIENCE_NOT_FOUND",
+            message: "Work experience not found",
+          },
+        },
         { status: 404 },
       );
     }
@@ -148,18 +182,12 @@ export const DELETE = withAuth(async (req, { params }) => {
     });
 
     return NextResponse.json(
-      ApiResponse.success(existing, "Work experience berhasil dihapus"),
+      {
+        success: true,
+        message: "Work experience deleted successfully",
+        data: existing,
+      },
       { status: 200 },
     );
-  } catch (error) {
-    console.error(error);
-
-    return NextResponse.json(
-      ApiResponse.error(
-        "Terjadi kesalahan saat menghapus work experience",
-        500,
-      ),
-      { status: 500 },
-    );
-  }
-});
+  }),
+);

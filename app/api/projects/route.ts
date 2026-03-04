@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { uploadToCloudinary } from "@/lib/cloudinary";
-import { CreateProjectSchema } from "@/lib/validation/projects";
-import { withAuth } from "@/lib/with-auth";
-import { ApiResponse } from "@/lib/response/api-response";
-import z from "zod";
+import { prisma } from "@/infrastructure/database/prisma";
+import { uploadToCloudinary } from "@/infrastructure/storage/cloudinary";
+import { CreateProjectSchema } from "@/shared/validation/projects";
+import { withAuth } from "@/shared/http/with-auth";
+import { withErrorHandler } from "@/shared/http/with-error-handler";
 
-export const GET = withAuth(async (req) => {
-  try {
+export const GET = withErrorHandler(
+  withAuth(async (req: Request) => {
     const { searchParams } = new URL(req.url);
 
     const page = Number(searchParams.get("page") ?? 1);
     const limit = Number(searchParams.get("limit") ?? 10);
 
-    const safePage = page < 1 ? 1 : page;
-    const safeLimit = limit > 50 ? 50 : limit;
+    const safePage = Number.isNaN(page) || page < 1 ? 1 : page;
+
+    const safeLimit =
+      Number.isNaN(limit) || limit < 1 ? 10 : limit > 50 ? 50 : limit;
 
     const skip = (safePage - 1) * safeLimit;
 
@@ -34,73 +35,75 @@ export const GET = withAuth(async (req) => {
       prisma.project.count(),
     ]);
 
+    // 🔥 Transform response
+    const formattedItems = items.map((project) => ({
+      id: project.id,
+      title: project.title,
+      description: project.description,
+      link: project.link,
+      projectImage: project.projectImage,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+      skills: project.techStack.map((t) => t.skill),
+    }));
+
     return NextResponse.json(
-      ApiResponse.success(
-        {
-          items,
+      {
+        success: true,
+        message: "Projects retrieved successfully",
+        data: {
+          items: formattedItems,
           meta: {
             page: safePage,
             limit: safeLimit,
-            total,
+            totalItems: total,
             totalPages: Math.ceil(total / safeLimit),
           },
         },
-        "Project berhasil diambil",
-      ),
+      },
       { status: 200 },
     );
-  } catch (error) {
-    console.error(error);
+  }),
+);
 
-    return NextResponse.json(
-      ApiResponse.error("Gagal mengambil project", 500),
-      { status: 500 },
-    );
-  }
-});
-
-export const POST = withAuth(async (req: Request) => {
-  try {
+export const POST = withErrorHandler(
+  withAuth(async (req: Request) => {
     const formData = await req.formData();
 
-    const skillsRaw = formData.get("skills") as string | null;
-
-    let skillsArray: string[] = [];
-
-    if (skillsRaw) {
-      try {
-        const parsed = JSON.parse(skillsRaw);
-        if (!Array.isArray(parsed)) throw new Error();
-        skillsArray = parsed;
-      } catch {
-        return NextResponse.json(
-          ApiResponse.error("Format skills tidak valid", 400),
-          { status: 400 },
-        );
-      }
-    }
+    // ✅ Ambil semua skillIds (multiple entries)
+    const skillIds = formData.getAll("skillIds") as string[];
 
     const validation = CreateProjectSchema.safeParse({
       title: formData.get("title"),
       description: formData.get("description"),
       link: formData.get("link"),
       projectImage: formData.get("projectImage"),
-      skills: skillsArray,
+      skillIds,
     });
 
     if (!validation.success) {
       return NextResponse.json(
-        ApiResponse.error(
-          validation.error.errors.map((e) => e.message).join(", "),
-          400,
-        ),
+        {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid input data",
+            fields: validation.error.flatten().fieldErrors,
+          },
+        },
         { status: 400 },
       );
     }
 
-    const { title, description, link, projectImage, skills } = validation.data;
+    const {
+      title,
+      description,
+      link,
+      projectImage,
+      skillIds: skills,
+    } = validation.data;
 
-    // 🔥 Validasi skill ID di DB
+    // 🔥 Validate skill IDs exist
     const validSkills = await prisma.skill.findMany({
       where: { id: { in: skills } },
       select: { id: true },
@@ -108,7 +111,13 @@ export const POST = withAuth(async (req: Request) => {
 
     if (validSkills.length !== skills.length) {
       return NextResponse.json(
-        ApiResponse.error("Beberapa skill tidak valid", 400),
+        {
+          success: false,
+          error: {
+            code: "INVALID_SKILL_REFERENCE",
+            message: "One or more skills are invalid",
+          },
+        },
         { status: 400 },
       );
     }
@@ -139,15 +148,12 @@ export const POST = withAuth(async (req: Request) => {
     });
 
     return NextResponse.json(
-      ApiResponse.success(newProject, "Project berhasil disimpan", 201),
+      {
+        success: true,
+        message: "Project created successfully",
+        data: newProject,
+      },
       { status: 201 },
     );
-  } catch (error) {
-    console.error("Error creating project:", error);
-
-    return NextResponse.json(
-      ApiResponse.error("Gagal menyimpan project", 500),
-      { status: 500 },
-    );
-  }
-});
+  }),
+);

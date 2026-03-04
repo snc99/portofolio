@@ -39,45 +39,77 @@ export function NavMain({
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => (
-          <Collapsible key={item.title} asChild className="group/collapsible">
-            <SidebarMenuItem>
-              <CollapsibleTrigger asChild>
+        {items.map((item) => {
+          const hasChildren = item.items && item.items.length > 0;
+          const isActive = pathname === item.url;
+
+          if (!hasChildren) {
+            return (
+              <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
+                  asChild
                   tooltip={item.title}
-                  className="text-gray-600 hover:bg-gray-100"
+                  className={`text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 ${
+                    isActive ? "bg-emerald-50 text-emerald-600 font-medium" : ""
+                  }`}
                 >
-                  {item.icon && <item.icon />}
-                  <span>{item.title}</span>
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  <Link href={item.url}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </Link>
                 </SidebarMenuButton>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarMenuSub>
-                  {item.items?.map((subItem) => {
-                    const isSubActive = pathname === subItem.url;
-                    return (
-                      <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton asChild>
-                          <Link
-                            href={subItem.url}
-                            className={`block w-full px-3 py-2 rounded-md transition ${
-                              isSubActive
-                                ? "bg-gray-200 text-gray-900"
-                                : "text-gray-600 hover:bg-gray-100"
-                            }`}
-                          >
-                            <span>{subItem.title}</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    );
-                  })}
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </SidebarMenuItem>
-          </Collapsible>
-        ))}
+              </SidebarMenuItem>
+            );
+          }
+
+          return (
+            <Collapsible key={item.title} asChild className="group/collapsible">
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    className={`
+  justify-start
+  group-data-[collapsible=icon]:justify-center
+  text-gray-600
+  hover:bg-emerald-50
+  hover:text-emerald-600
+  ${isActive ? "bg-emerald-50 text-emerald-600 font-medium" : ""}
+`}
+                  >
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {item.items?.map((subItem) => {
+                      const isSubActive = pathname === subItem.url;
+                      return (
+                        <SidebarMenuSubItem key={subItem.title}>
+                          <SidebarMenuSubButton asChild>
+                            <Link
+                              href={subItem.url}
+                              className={`block w-full px-3 py-2 rounded-md transition ${
+                                isSubActive
+                                  ? "bg-emerald-50 text-emerald-600 font-medium"
+                                  : "text-gray-600 hover:bg-emerald-50 hover:text-emerald-600"
+                              }`}
+                            >
+                              <span>{subItem.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      );
+                    })}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
+          );
+        })}
       </SidebarMenu>
     </SidebarGroup>
   );

@@ -1,43 +1,91 @@
 import { NextResponse, NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { CreateAboutSchema, UpdateAboutSchema } from "@/lib/validation/about";
-import { ApiResponse } from "@/lib/response/api-response";
-import { withAuth } from "@/lib/with-auth";
+import { prisma } from "@/infrastructure/database/prisma";
+import {
+  CreateAboutSchema,
+  UpdateAboutSchema,
+} from "@/modules/about/about.schema";
+import { withAuth } from "@/shared/http/with-auth";
+import { withErrorHandler } from "@/shared/http/with-error-handler";
 
-export const GET = withAuth(async () => {
-  const about = await prisma.about.findFirst({
-    select: {
-      id: true,
-      description: true,
-    },
-  });
+export const GET = withErrorHandler(
+  withAuth(async () => {
+    const about = await prisma.about.findFirst({
+      select: {
+        id: true,
+        description: true,
+      },
+    });
 
-  return NextResponse.json(
-    ApiResponse.success(about, "Data about berhasil diambil"),
-    { status: 200 },
-  );
-});
-
-export const POST = withAuth(async (req: Request) => {
-  try {
-    const body = await req.json();
-
-    const parsed = CreateAboutSchema.safeParse(body);
-    if (!parsed.success) {
+    if (!about) {
       return NextResponse.json(
-        ApiResponse.error(
-          parsed.error.errors.map((e) => e.message).join(", "),
-          400,
-        ),
+        {
+          success: false,
+          error: {
+            code: "ABOUT_NOT_FOUND",
+            message: "About data not found",
+          },
+        },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "About data retrieved successfully",
+        data: about,
+      },
+      { status: 200 },
+    );
+  }),
+);
+
+export const POST = withErrorHandler(
+  withAuth(async (req: Request) => {
+    let body: unknown;
+
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_JSON",
+            message: "Request body must be valid JSON",
+          },
+        },
         { status: 400 },
       );
     }
 
-    // karena singleton → cek dulu
+    const parsed = CreateAboutSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid input data",
+            fields: parsed.error.flatten().fieldErrors,
+          },
+        },
+        { status: 400 },
+      );
+    }
+
     const existing = await prisma.about.findFirst();
+
     if (existing) {
       return NextResponse.json(
-        ApiResponse.error("Data about sudah ada. Gunakan update.", 400),
+        {
+          success: false,
+          error: {
+            code: "ABOUT_ALREADY_EXISTS",
+            message: "About data already exists. Please use update instead.",
+          },
+        },
         { status: 400 },
       );
     }
@@ -49,59 +97,89 @@ export const POST = withAuth(async (req: Request) => {
     });
 
     return NextResponse.json(
-      ApiResponse.success(about, "About berhasil dibuat", 201),
+      {
+        success: true,
+        message: "About created successfully",
+        data: about,
+      },
       { status: 201 },
     );
-  } catch (error) {
-    console.error(error);
+  }),
+);
 
-    return NextResponse.json(ApiResponse.error("Gagal membuat about", 500), {
-      status: 500,
-    });
-  }
-});
+export const PUT = withErrorHandler(
+  withAuth(async (req: Request) => {
+    let body: unknown;
 
-export const PUT = withAuth(async (req: Request) => {
-  try {
-    const body = await req.json();
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_JSON",
+            message: "Request body must be valid JSON",
+          },
+        },
+        { status: 400 },
+      );
+    }
 
     const parsed = UpdateAboutSchema.safeParse(body);
+
+    // 🔴 Validation error
     if (!parsed.success) {
       return NextResponse.json(
-        ApiResponse.error(
-          parsed.error.errors[0]?.message || "Input tidak valid",
-          400,
-        ),
+        {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid input data",
+            fields: parsed.error.flatten().fieldErrors,
+          },
+        },
         { status: 400 },
       );
     }
 
     const existing = await prisma.about.findFirst();
 
+    const newDescription = parsed.data.description?.trim();
+
+    // 🟢 If not exist → create (upsert-like behavior)
     if (!existing) {
-      // kalau belum ada → create
       const created = await prisma.about.create({
         data: {
-          description: parsed.data.description!,
+          description: newDescription!,
         },
       });
 
       return NextResponse.json(
-        ApiResponse.success(created, "About berhasil dibuat"),
+        {
+          success: true,
+          message: "About created successfully",
+          data: created,
+        },
         { status: 201 },
       );
     }
 
-    const newDescription = parsed.data.description?.trim();
-
-    // minimal 1 perubahan
+    // 🔴 No changes
     if (!newDescription || newDescription === existing.description) {
       return NextResponse.json(
-        ApiResponse.error("Minimal satu perubahan harus dilakukan", 400),
+        {
+          success: false,
+          error: {
+            code: "NO_CHANGES",
+            message: "At least one change must be made",
+          },
+        },
         { status: 400 },
       );
     }
 
+    // 🟢 Update
     const updated = await prisma.about.update({
       where: { id: existing.id },
       data: {
@@ -110,25 +188,30 @@ export const PUT = withAuth(async (req: Request) => {
     });
 
     return NextResponse.json(
-      ApiResponse.success(updated, "About berhasil diperbarui"),
+      {
+        success: true,
+        message: "About updated successfully",
+        data: updated,
+      },
       { status: 200 },
     );
-  } catch (error) {
-    console.error(error);
+  }),
+);
 
-    return NextResponse.json(ApiResponse.error("Gagal update about", 500), {
-      status: 500,
-    });
-  }
-});
-
-export const DELETE = withAuth(async () => {
-  try {
+export const DELETE = withErrorHandler(
+  withAuth(async () => {
     const existing = await prisma.about.findFirst();
 
+    // 🔴 Not found
     if (!existing) {
       return NextResponse.json(
-        ApiResponse.error("Data about tidak ditemukan", 404),
+        {
+          success: false,
+          error: {
+            code: "ABOUT_NOT_FOUND",
+            message: "About data not found",
+          },
+        },
         { status: 404 },
       );
     }
@@ -137,15 +220,14 @@ export const DELETE = withAuth(async () => {
       where: { id: existing.id },
     });
 
+    // 🟢 Success
     return NextResponse.json(
-      ApiResponse.success(null, "About berhasil dihapus"),
+      {
+        success: true,
+        message: "About deleted successfully",
+        data: null,
+      },
       { status: 200 },
     );
-  } catch (error) {
-    console.error(error);
-
-    return NextResponse.json(ApiResponse.error("Gagal menghapus about", 500), {
-      status: 500,
-    });
-  }
-});
+  }),
+);

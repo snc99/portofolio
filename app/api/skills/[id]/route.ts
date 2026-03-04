@@ -1,18 +1,29 @@
-import { prisma } from "@/lib/prisma";
-import { deleteFromCloudinary, uploadToCloudinary } from "@/lib/cloudinary";
+import { prisma } from "@/infrastructure/database/prisma";
+import {
+  deleteFromCloudinary,
+  uploadToCloudinary,
+} from "@/infrastructure/storage/cloudinary";
 import { NextResponse } from "next/server";
-import { UpdateSkillSchema } from "@/lib/validation/skillSchema";
-import { withAuth } from "@/lib/with-auth";
-import { ApiResponse } from "@/lib/response/api-response";
+import { UpdateSkillSchema } from "@/shared/validation/skillSchema";
+import { withAuth } from "@/shared/http/with-auth";
+import { withErrorHandler } from "@/shared/http/with-error-handler";
 
-export const PATCH = withAuth(async (req, { params }) => {
-  try {
-    const { id } = await params!;
+export const PATCH = withErrorHandler(
+  withAuth(async (req: Request, context) => {
+    const resolvedParams = await context.params;
+    const id = resolvedParams?.id;
 
     if (!id || id.trim() === "") {
-      return NextResponse.json(ApiResponse.error("ID tidak valid", 400), {
-        status: 400,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_ID",
+            message: "Invalid skill ID",
+          },
+        },
+        { status: 400 },
+      );
     }
 
     const existing = await prisma.skill.findUnique({
@@ -21,7 +32,13 @@ export const PATCH = withAuth(async (req, { params }) => {
 
     if (!existing) {
       return NextResponse.json(
-        ApiResponse.error("Skill tidak ditemukan", 404),
+        {
+          success: false,
+          error: {
+            code: "SKILL_NOT_FOUND",
+            message: "Skill not found",
+          },
+        },
         { status: 404 },
       );
     }
@@ -35,23 +52,34 @@ export const PATCH = withAuth(async (req, { params }) => {
 
     if (!validation.success) {
       return NextResponse.json(
-        ApiResponse.error(
-          validation.error.errors.map((e) => e.message).join(", "),
-          400,
-        ),
+        {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid input data",
+            fields: validation.error.flatten().fieldErrors,
+          },
+        },
         { status: 400 },
       );
     }
 
     const { name, photo } = validation.data;
 
-    const isNameChanged = typeof name === "string" && name !== existing.name;
+    const isNameChanged =
+      typeof name === "string" && name.trim() !== existing.name;
 
-    const isPhotoChanged = !!photo;
+    const isPhotoChanged = photo instanceof File && photo.size > 0;
 
     if (!isNameChanged && !isPhotoChanged) {
       return NextResponse.json(
-        ApiResponse.error("Minimal satu perubahan harus dilakukan", 400),
+        {
+          success: false,
+          error: {
+            code: "NO_CHANGES",
+            message: "At least one change must be made",
+          },
+        },
         { status: 400 },
       );
     }
@@ -61,7 +89,7 @@ export const PATCH = withAuth(async (req, { params }) => {
       photo?: string;
     } = {};
 
-    // 🔥 Cek duplicate kalau nama berubah
+    // 🔥 Duplicate check if name changed
     if (isNameChanged) {
       const duplicate = await prisma.skill.findFirst({
         where: {
@@ -72,14 +100,21 @@ export const PATCH = withAuth(async (req, { params }) => {
 
       if (duplicate) {
         return NextResponse.json(
-          ApiResponse.error("Skill dengan nama tersebut sudah ada", 409),
+          {
+            success: false,
+            error: {
+              code: "SKILL_ALREADY_EXISTS",
+              message: "A skill with this name already exists",
+            },
+          },
           { status: 409 },
         );
       }
 
-      updateData.name = name!;
+      updateData.name = name!.trim();
     }
 
+    // 🔥 Photo update
     if (isPhotoChanged) {
       const uploadedUrl = await uploadToCloudinary(photo!, "skills");
 
@@ -100,26 +135,32 @@ export const PATCH = withAuth(async (req, { params }) => {
     });
 
     return NextResponse.json(
-      ApiResponse.success(updatedSkill, "Skill berhasil diperbarui"),
+      {
+        success: true,
+        message: "Skill updated successfully",
+        data: updatedSkill,
+      },
       { status: 200 },
     );
-  } catch (error) {
-    console.error("Error updating skill:", error);
+  }),
+);
 
-    return NextResponse.json(ApiResponse.error("Gagal mengupdate skill", 500), {
-      status: 500,
-    });
-  }
-});
-
-export const DELETE = withAuth(async (req, { params }) => {
-  try {
-    const { id } = await params!;
+export const DELETE = withErrorHandler(
+  withAuth(async (req: Request, context) => {
+    const resolvedParams = await context.params;
+    const id = resolvedParams?.id;
 
     if (!id || id.trim() === "") {
-      return NextResponse.json(ApiResponse.error("ID tidak valid", 400), {
-        status: 400,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_ID",
+            message: "Invalid skill ID",
+          },
+        },
+        { status: 400 },
+      );
     }
 
     const skill = await prisma.skill.findUnique({
@@ -131,18 +172,28 @@ export const DELETE = withAuth(async (req, { params }) => {
 
     if (!skill) {
       return NextResponse.json(
-        ApiResponse.error("Skill tidak ditemukan", 404),
+        {
+          success: false,
+          error: {
+            code: "SKILL_NOT_FOUND",
+            message: "Skill not found",
+          },
+        },
         { status: 404 },
       );
     }
 
-    //  Cegah delete kalau masih dipakai project
+    // 🔴 Prevent delete if still used in projects
     if (skill.projects.length > 0) {
       return NextResponse.json(
-        ApiResponse.error(
-          "Skill tidak bisa dihapus karena masih digunakan oleh project",
-          409,
-        ),
+        {
+          success: false,
+          error: {
+            code: "SKILL_IN_USE",
+            message:
+              "Skill cannot be deleted because it is still used in projects",
+          },
+        },
         { status: 409 },
       );
     }
@@ -151,7 +202,7 @@ export const DELETE = withAuth(async (req, { params }) => {
       where: { id },
     });
 
-    // hapus image cloudinary (optional cleanup)
+    // 🔥 Cloudinary cleanup (non-blocking failure)
     if (skill.photo) {
       try {
         await deleteFromCloudinary(skill.photo);
@@ -161,18 +212,15 @@ export const DELETE = withAuth(async (req, { params }) => {
     }
 
     return NextResponse.json(
-      ApiResponse.success(
-        { id: skill.id, name: skill.name },
-        "Skill berhasil dihapus",
-      ),
+      {
+        success: true,
+        message: "Skill deleted successfully",
+        data: {
+          id: skill.id,
+          name: skill.name,
+        },
+      },
       { status: 200 },
     );
-  } catch (error) {
-    console.error("Error deleting skill:", error);
-
-    return NextResponse.json(
-      ApiResponse.error("Terjadi kesalahan saat menghapus skill", 500),
-      { status: 500 },
-    );
-  }
-});
+  }),
+);

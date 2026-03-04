@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/middlewares/auth";
-import { authService } from "@/services/auth.service";
-import { ApiResponse } from "@/lib/response/api-response";
+import { requireAuth } from "@/infrastructure/security/auth";
 
 export async function POST() {
   try {
-    const user = await requireAuth();
+    await requireAuth();
 
-    await authService.logout(user.id);
-
-    const res = NextResponse.json(
-      ApiResponse.success(null, "Logout berhasil"),
+    const response = NextResponse.json(
+      {
+        success: true,
+        message: "Logout successful",
+        data: null,
+      },
       { status: 200 },
     );
 
-    // hapus cookie
-    res.cookies.set("pw_token", "", {
+    // Hapus cookie
+    response.cookies.set("pw_token", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -23,10 +23,17 @@ export async function POST() {
       maxAge: 0,
     });
 
-    return res;
-  } catch (err) {
-    return NextResponse.json(ApiResponse.error("Unauthorized", 401), {
-      status: 401,
-    });
+    return response;
+  } catch {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Unauthorized",
+        },
+      },
+      { status: 401 },
+    );
   }
 }

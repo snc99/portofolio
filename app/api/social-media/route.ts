@@ -1,58 +1,47 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { CreateSocialMediaSchema } from "@/lib/validation/sosmed";
-import { uploadToCloudinary } from "@/lib/cloudinary";
-import { withAuth } from "@/lib/with-auth";
-import { ApiResponse } from "@/lib/response/api-response";
+import { prisma } from "@/infrastructure/database/prisma";
+import { CreateSocialMediaSchema } from "@/shared/validation/sosmed";
+import { uploadToCloudinary } from "@/infrastructure/storage/cloudinary";
+import { withAuth } from "@/shared/http/with-auth";
+import { socialMediaService } from "@/modules/social-media/social-media.service";
+import { withErrorHandler } from "@/shared/http/with-error-handler";
 
-export const GET = withAuth(async (req: Request) => {
-  try {
+export const GET = withErrorHandler(
+  withAuth(async (req: Request) => {
     const { searchParams } = new URL(req.url);
 
     const page = Number(searchParams.get("page") ?? 1);
     const limit = Number(searchParams.get("limit") ?? 10);
 
-    const safePage = page < 1 ? 1 : page;
-    const safeLimit = limit > 50 ? 50 : limit;
-
-    const skip = (safePage - 1) * safeLimit;
-
-    const [items, total] = await Promise.all([
-      prisma.socialMedia.findMany({
-        skip,
-        take: safeLimit,
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.socialMedia.count(),
-    ]);
-
-    return NextResponse.json(
-      ApiResponse.success(
+    // 🔴 Basic validation for pagination
+    if (isNaN(page) || page < 1 || isNaN(limit) || limit < 1) {
+      return NextResponse.json(
         {
-          items,
-          meta: {
-            page: safePage,
-            limit: safeLimit,
-            total,
-            totalPages: Math.ceil(total / safeLimit),
+          success: false,
+          error: {
+            code: "INVALID_PAGINATION_PARAMS",
+            message: "Page and limit must be positive numbers.",
           },
         },
-        "Social media berhasil diambil",
-      ),
-      { status: 200 },
-    );
-  } catch (error) {
-    console.error("Error fetching social media:", error);
+        { status: 400 },
+      );
+    }
+
+    const data = await socialMediaService.getPaginatedSocialMedia(page, limit);
 
     return NextResponse.json(
-      ApiResponse.error("Gagal mengambil social media", 500),
-      { status: 500 },
+      {
+        success: true,
+        message: "Social media retrieved successfully.",
+        data, // should contain items + meta
+      },
+      { status: 200 },
     );
-  }
-});
+  }),
+);
 
-export const POST = withAuth(async (req: Request) => {
-  try {
+export const POST = withErrorHandler(
+  withAuth(async (req: Request) => {
     const formData = await req.formData();
 
     const validation = CreateSocialMediaSchema.safeParse({
@@ -61,19 +50,24 @@ export const POST = withAuth(async (req: Request) => {
       photo: formData.get("photo"),
     });
 
+    // 🔴 Validation Error
     if (!validation.success) {
       return NextResponse.json(
-        ApiResponse.error(
-          validation.error.errors.map((e) => e.message).join(", "),
-          400,
-        ),
+        {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid input data.",
+            fields: validation.error.flatten().fieldErrors,
+          },
+        },
         { status: 400 },
       );
     }
 
     const { platform, url, photo } = validation.data;
 
-    // 🔥 Cegah duplicate platform (case insensitive)
+    // 🔴 Duplicate check (case insensitive)
     const existing = await prisma.socialMedia.findFirst({
       where: {
         platform: { equals: platform, mode: "insensitive" },
@@ -82,7 +76,13 @@ export const POST = withAuth(async (req: Request) => {
 
     if (existing) {
       return NextResponse.json(
-        ApiResponse.error("Platform sudah terdaftar", 409),
+        {
+          success: false,
+          error: {
+            code: "SOCIAL_MEDIA_DUPLICATE_PLATFORM",
+            message: "This platform has already been registered.",
+          },
+        },
         { status: 409 },
       );
     }
@@ -97,20 +97,14 @@ export const POST = withAuth(async (req: Request) => {
       },
     });
 
+    // 🟢 Success
     return NextResponse.json(
-      ApiResponse.success(
-        newSocialMedia,
-        "Social media berhasil ditambahkan",
-        201,
-      ),
+      {
+        success: true,
+        message: "Social media created successfully.",
+        data: newSocialMedia,
+      },
       { status: 201 },
     );
-  } catch (error) {
-    console.error("Error creating social media:", error);
-
-    return NextResponse.json(
-      ApiResponse.error("Terjadi kesalahan saat menambahkan social media", 500),
-      { status: 500 },
-    );
-  }
-});
+  }),
+);

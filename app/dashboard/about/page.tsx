@@ -1,127 +1,201 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { PencilIcon, Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { aboutApi } from "@/modules/about/about.api";
 import Loading from "@/components/custom-ui/Loading";
-import {
-  DeleteConfirmation,
-  ToastNotification,
-} from "@/components/Toast-Sweetalert2/Toast";
 import ErrorServer from "@/components/card/errorServer";
+import AboutCard from "@/components/custom-ui/about/AboutCard";
+import { toast } from "sonner";
+import { useAboutForm } from "@/modules/about/useAboutForm";
+import EditAboutModal from "@/components/custom-ui/about/EditAboutModal";
+import CreateAboutModal from "@/components/custom-ui/about/CreateAboutModal";
+import DeleteAboutModal from "@/components/custom-ui/about/DeleteAboutModal";
 
 export default function AboutPage() {
   const [aboutData, setAboutData] = useState<{
     id: string;
     description: string;
   } | null>(null);
+
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const [error, setError] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const aboutForm = useAboutForm(aboutData ?? undefined);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const fetchAboutData = async () => {
-      try {
-        const response = await fetch("/api/about/");
-        if (!response.ok) {
-          throw new Error("Gagal mengambil data tentang");
-        }
-        const data: { id: string; description: string } = await response.json();
-        setAboutData(data);
-      } catch (error) {
-        console.error("Terjadi kesalahan:", error);
-        setError("Terjadi kesalahan saat mengambil data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAboutData();
+    loadData();
   }, []);
 
-  const handleDelete = async () => {
-    const isConfirmed = await DeleteConfirmation();
-
-    if (isConfirmed && aboutData?.id) {
-      try {
-        const response = await fetch(`/api/about/${aboutData.id}`, {
-          method: "DELETE",
-        });
-
-        if (!response.ok) {
-          throw new Error("Gagal menghapus data.");
-        }
-
-        setAboutData(null);
-
-        setTimeout(() => {
-          fetchAboutData();
-        }, 500);
-
-        ToastNotification("success", "About deleted successfully");
-      } catch (error) {
-        setError("Terjadi kesalahan saat menghapus data.");
-        console.error("Error saat menghapus data:", error);
-      }
-    }
-  };
-
-  const fetchAboutData = async () => {
+  const loadData = async () => {
     try {
-      const response = await fetch("/api/about/");
-      if (!response.ok) {
-        throw new Error("Gagal mengambil data tentang");
+      setLoading(true);
+      setError(false);
+
+      const res = await aboutApi.get();
+      setAboutData(res.data.data ?? null);
+    } catch (err: any) {
+      const status = err?.response?.status;
+
+      if (status === 404) {
+        setAboutData(null);
+        return;
       }
-      const data: { id: string; description: string } = await response.json();
-      setAboutData(data);
-    } catch (error) {
-      console.error("Terjadi kesalahan:", error);
-      setError("Terjadi kesalahan saat mengambil data.");
+
+      setError(true);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return <Loading />;
-  }
+  const handleCreateAbout = async () => {
+    aboutForm.setLoading(true);
+    aboutForm.setErrors({});
 
-  if (error) {
-    return <ErrorServer />;
-  }
+    try {
+      const res = await aboutApi.create({
+        description: aboutForm.values.description,
+      });
+
+      setAboutData(res.data.data);
+
+      setShowCreateModal(false);
+      aboutForm.reset();
+
+      toast.success("About created successfully");
+    } catch (err: any) {
+      const errorData = err?.response?.data;
+
+      if (errorData?.error?.fields) {
+        const formatted: Record<string, string> = {};
+        Object.keys(errorData.error.fields).forEach((key) => {
+          formatted[key] = errorData.error.fields[key][0];
+        });
+
+        aboutForm.setErrors(formatted);
+        return;
+      }
+
+      toast.error(errorData?.error?.message || "Failed to create about");
+    } finally {
+      aboutForm.setLoading(false);
+    }
+  };
+
+  const handleUpdateAbout = async () => {
+    if (!aboutData) return;
+
+    aboutForm.setLoading(true);
+    aboutForm.setErrors({});
+
+    try {
+      const res = await aboutApi.update({
+        description: aboutForm.values.description,
+      });
+
+      // ✅ Update local state
+      setAboutData(res.data.data);
+
+      setShowEditModal(false);
+      aboutForm.reset();
+
+      toast.success("About updated successfully");
+    } catch (err: any) {
+      const errorData = err?.response?.data;
+
+      // 🔥 Validation errors
+      if (errorData?.error?.fields) {
+        const formatted: Record<string, string> = {};
+
+        Object.keys(errorData.error.fields).forEach((key) => {
+          formatted[key] = errorData.error.fields[key][0];
+        });
+
+        aboutForm.setErrors(formatted);
+        return;
+      }
+
+      // 🔥 Optional: NO_CHANGES
+      if (errorData?.error?.code === "NO_CHANGES") {
+        toast.info("No changes detected");
+        return;
+      }
+
+      toast.error(errorData?.error?.message || "Failed to update about");
+    } finally {
+      aboutForm.setLoading(false);
+    }
+  };
+
+  const handleDeleteAbout = async () => {
+    if (!aboutData) return;
+
+    setIsDeleting(true);
+
+    try {
+      await aboutApi.delete();
+
+      setAboutData(null);
+      aboutForm.reset(); // 🔥 INI YANG KURANG
+
+      setShowDeleteModal(false);
+
+      toast.success("About deleted successfully");
+    } catch (err: any) {
+      const errorData = err?.response?.data;
+
+      toast.error(errorData?.error?.message || "Failed to delete about");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (loading) return <Loading />;
+  if (error) return <ErrorServer />;
 
   return (
-    <div className="w-full px-4 sm:px-6 md:px-8 py-6 bg-white border border-gray-200 rounded-lg">
-      <h2 className="text-3xl font-semibold mb-4 text-gray-800 text-center">
-        About Page
-      </h2>
+    <div className="min-h-screen bg-gray-50 p-10 space-y-8">
+      <AboutCard
+        data={aboutData}
+        onRequestCreate={() => setShowCreateModal(true)}
+        onRequestEdit={() => setShowEditModal(true)}
+        onRequestDelete={() => setShowDeleteModal(true)}
+      />
 
-      {aboutData && aboutData.id && aboutData.description ? (
-        <>
-          <p className="text-lg text-gray-700">{aboutData.description}</p>
-          <div className="flex justify-end gap-2 mt-4">
-            <button
-              className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-all"
-              onClick={() => {
-                router.push(`/dashboard/about/edit/${aboutData.id}`);
-              }}
-            >
-              <PencilIcon className="h-5 w-5" />
-            </button>
+      <CreateAboutModal
+        open={showCreateModal}
+        onClose={() => {
+          aboutForm.reset();
+          setShowCreateModal(false);
+        }}
+        values={aboutForm.values}
+        setValues={aboutForm.setValues}
+        onSubmit={handleCreateAbout}
+        isLoading={aboutForm.loading}
+        errors={aboutForm.errors}
+      />
 
-            <button
-              className="flex items-center px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all"
-              onClick={handleDelete}
-            >
-              <Trash2 className="h-5 w-5" />
-            </button>
-          </div>
-        </>
-      ) : (
-        <p className="text-gray-500 italic text-center">
-          Belum ada deskripsi About.
-        </p>
-      )}
+      <EditAboutModal
+        open={showEditModal}
+        onClose={() => {
+          aboutForm.reset();
+          setShowEditModal(false);
+        }}
+        values={aboutForm.values}
+        setValues={aboutForm.setValues}
+        onSubmit={handleUpdateAbout}
+        isLoading={aboutForm.loading}
+        errors={aboutForm.errors}
+      />
+
+      <DeleteAboutModal
+        open={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteAbout}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

@@ -1,202 +1,326 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/infrastructure/database/prisma";
 import {
   UpdateProfileSchema,
   CreateProfileSchema,
-} from "@/lib/validation/profile";
+} from "@/shared/validation/profile";
 import {
   deleteFromCloudinary,
   updateCloudinaryFile,
   uploadToCloudinary,
-} from "@/lib/cloudinary";
-import { ApiResponse } from "@/lib/response/api-response";
-import { withAuth } from "@/lib/with-auth";
+} from "@/infrastructure/storage/cloudinary";
+import { ApiResponse } from "@/shared/response/api-response.util";
+import { withAuth } from "@/shared/http/with-auth";
+import { withErrorHandler } from "@/shared/http/with-error-handler";
 
-export const GET = withAuth(async () => {
-  const hero = await prisma.profile.findFirst({
-    select: {
-      id: true,
-      motto: true,
-      cvLink: true,
-      cvFilename: true,
-    },
-  });
+export const GET = withErrorHandler(
+  withAuth(async () => {
+    try {
+      const profile = await prisma.profile.findFirst({
+        select: {
+          id: true,
+          motto: true,
+          cvLink: true,
+          cvFilename: true,
+        },
+      });
 
-  return NextResponse.json(
-    ApiResponse.success(hero, "Data profile berhasil diambil"),
-    { status: 200 },
-  );
-});
+      if (!profile) {
+        return NextResponse.json(
+          ApiResponse.error("Profile not found", "NOT_FOUND"),
+          { status: 404 },
+        );
+      }
 
-export const POST = withAuth(async (req) => {
-  try {
-    const formData = await req.formData();
+      return NextResponse.json(
+        ApiResponse.success(profile, "Profile retrieved successfully"),
+        { status: 200 },
+      );
+    } catch (error) {
+      console.error("GET PROFILE ERROR:", error);
 
-    const result = CreateProfileSchema.safeParse({
-      motto: formData.get("motto"),
-      cv: formData.get("cv"),
-    });
-
-    if (!result.success) {
       return NextResponse.json(
         ApiResponse.error(
-          result.error.errors.map((e) => e.message).join(", "),
-          400,
+          "Failed to retrieve profile",
+          "INTERNAL_SERVER_ERROR",
         ),
-        { status: 400 },
+        { status: 500 },
       );
     }
+  }),
+);
 
-    const { motto, cv } = result.data;
+export const POST = withErrorHandler(
+  withAuth(async (req: Request) => {
+    try {
+      const existing = await prisma.profile.findFirst();
 
-    const existingData = await prisma.profile.findFirst();
+      // 🔴 Conflict - Profile already exists
+      if (existing) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "PROFILE_ALREADY_EXISTS",
+              message: "Profile has already been created.",
+            },
+          },
+          { status: 409 },
+        );
+      }
 
-    if (existingData && existingData.motto === motto) {
-      return NextResponse.json(
-        ApiResponse.error("Motto baru tidak boleh sama dengan yang lama.", 409),
-        { status: 409 },
-      );
-    }
+      const formData = await req.formData();
 
-    const uploadedUrl = await uploadToCloudinary(cv, "cv_files");
-    const originalName = cv.name;
-
-    let profile;
-
-    if (existingData) {
-      profile = await prisma.profile.update({
-        where: { id: existingData.id },
-        data: { motto, cvLink: uploadedUrl, cvFilename: originalName },
+      const result = CreateProfileSchema.safeParse({
+        motto: formData.get("motto"),
+        cv: formData.get("cv"),
       });
-    } else {
-      profile = await prisma.profile.create({
-        data: { motto, cvLink: uploadedUrl, cvFilename: originalName },
+
+      if (!result.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "Invalid input data.",
+              fields: result.error.flatten().fieldErrors,
+            },
+          },
+          { status: 400 },
+        );
+      }
+
+      const { motto, cv } = result.data;
+
+      const uploadedUrl = await uploadToCloudinary(cv, "cv_files");
+
+      const profile = await prisma.profile.create({
+        data: {
+          motto,
+          cvLink: uploadedUrl,
+          cvFilename: cv.name,
+        },
       });
-    }
 
-    return NextResponse.json(
-      ApiResponse.success(profile, "Profile berhasil disimpan"),
-      { status: 200 },
-    );
-  } catch (error) {
-    console.error(error);
-
-    return NextResponse.json(
-      ApiResponse.error("Terjadi kesalahan, coba lagi nanti.", 500),
-      { status: 500 },
-    );
-  }
-});
-
-export const PUT = withAuth(async (req) => {
-  try {
-    const existing = await prisma.profile.findFirst();
-
-    if (!existing) {
-      return NextResponse.json(ApiResponse.error("Profile belum dibuat", 404), {
-        status: 404,
-      });
-    }
-
-    const formData = await req.formData();
-
-    const result = UpdateProfileSchema.safeParse({
-      motto: formData.get("motto"),
-      cv: formData.get("cv"),
-    });
-
-    if (!result.success) {
       return NextResponse.json(
-        ApiResponse.error(
-          result.error.errors.map((e) => e.message).join(", "),
-          400,
-        ),
-        { status: 400 },
+        {
+          success: true,
+          message: "Profile created successfully.",
+          data: profile,
+        },
+        { status: 201 },
+      );
+    } catch (error) {
+      console.error("POST PROFILE ERROR:", error);
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              "An unexpected server error occurred while creating the profile.",
+          },
+        },
+        { status: 500 },
       );
     }
+  }),
+);
 
-    const { motto, cv } = result.data;
+export const PUT = withErrorHandler(
+  withAuth(async (req: Request) => {
+    try {
+      const existing = await prisma.profile.findFirst();
 
-    const isMottoChanged =
-      typeof motto === "string" && existing.motto.trim() !== motto.trim();
+      // 🔴 Not Found
+      if (!existing) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "PROFILE_NOT_FOUND",
+              message: "Profile has not been created yet.",
+            },
+          },
+          { status: 404 },
+        );
+      }
 
-    const isCvChanged = !!cv;
+      const formData = await req.formData();
 
-    if (!isMottoChanged && !isCvChanged) {
-      return NextResponse.json(
-        ApiResponse.error("Minimal satu perubahan harus dilakukan", 400),
-        { status: 400 },
-      );
-    }
+      // Normalize file
+      const rawCv = formData.get("cv");
+      const cv = rawCv instanceof File && rawCv.size > 0 ? rawCv : undefined;
 
-    let cvUrl = existing.cvLink;
-    let cvFilename = existing.cvFilename;
+      const mottoRaw = formData.get("motto");
 
-    if (cv) {
-      const uploadedUrl = await updateCloudinaryFile(
-        existing.cvLink ?? "",
+      const result = UpdateProfileSchema.safeParse({
+        motto: typeof mottoRaw === "string" ? mottoRaw : undefined,
         cv,
-        "cv_files",
-      );
+      });
 
-      cvUrl = uploadedUrl;
-      cvFilename = cv.name;
-    }
+      // 🔴 Validation Error
+      if (!result.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "Invalid input data.",
+              fields: result.error.flatten().fieldErrors,
+            },
+          },
+          { status: 400 },
+        );
+      }
 
-    const updated = await prisma.profile.update({
-      where: { id: existing.id },
-      data: {
-        motto: isMottoChanged ? motto : existing.motto,
-        cvLink: cvUrl,
-        cvFilename: cvFilename,
-      },
-    });
+      const { motto, cv: validatedCv } = result.data;
 
-    return NextResponse.json(
-      ApiResponse.success(updated, "Profile berhasil diperbarui"),
-      { status: 200 },
-    );
-  } catch (error) {
-    console.error(error);
+      // Check changes
+      const isMottoChanged =
+        typeof motto === "string" && existing.motto.trim() !== motto.trim();
 
-    return NextResponse.json(
-      ApiResponse.error("Gagal memperbarui profile", 500),
-      { status: 500 },
-    );
-  }
-});
+      const isCvChanged = !!validatedCv;
 
-export const DELETE = withAuth(async () => {
-  try {
-    const existing = await prisma.profile.findFirst({
-      select: { id: true, cvLink: true },
-    });
+      // 🔴 No Changes
+      if (!isMottoChanged && !isCvChanged) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "NO_CHANGES_DETECTED",
+              message:
+                "At least one change must be made to update the profile.",
+            },
+          },
+          { status: 400 },
+        );
+      }
 
-    if (!existing) {
+      let cvUrl = existing.cvLink;
+      let cvFilename = existing.cvFilename;
+
+      // Update file if new CV provided
+      if (validatedCv) {
+        const uploadedUrl = await updateCloudinaryFile(
+          existing.cvLink ?? "",
+          validatedCv,
+          "cv_files",
+        );
+
+        cvUrl = uploadedUrl;
+        cvFilename = validatedCv.name;
+      }
+
+      const updated = await prisma.profile.update({
+        where: { id: existing.id },
+        data: {
+          motto: isMottoChanged ? motto : existing.motto,
+          cvLink: cvUrl,
+          cvFilename: cvFilename,
+        },
+      });
+
+      // 🟢 Success
       return NextResponse.json(
-        ApiResponse.error("Profile tidak ditemukan", 404),
-        { status: 404 },
+        {
+          success: true,
+          message: "Profile updated successfully.",
+          data: updated,
+        },
+        { status: 200 },
+      );
+    } catch (error) {
+      console.error("PUT PROFILE ERROR:", error);
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              "An unexpected server error occurred while updating the profile.",
+          },
+        },
+        { status: 500 },
       );
     }
+  }),
+);
 
-    if (existing.cvLink) {
-      await deleteFromCloudinary(existing.cvLink);
+export const DELETE = withErrorHandler(
+  withAuth(async () => {
+    try {
+      const existing = await prisma.profile.findFirst({
+        select: {
+          id: true,
+          cvLink: true,
+        },
+      });
+
+      // 🔴 Not Found
+      if (!existing) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "PROFILE_NOT_FOUND",
+              message: "Profile not found.",
+            },
+          },
+          { status: 404 },
+        );
+      }
+
+      // 🔴 Delete file from Cloudinary (if exists)
+      if (existing.cvLink) {
+        try {
+          await deleteFromCloudinary(existing.cvLink);
+        } catch (cloudErr) {
+          console.error("Cloudinary delete failed:", cloudErr);
+
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: "CLOUDINARY_DELETE_FAILED",
+                message: "Failed to delete the CV file from cloud storage.",
+              },
+            },
+            { status: 500 },
+          );
+        }
+      }
+
+      // 🔥 Delete record from database
+      await prisma.profile.delete({
+        where: { id: existing.id },
+      });
+
+      // 🟢 Success
+      return NextResponse.json(
+        {
+          success: true,
+          message: "Profile deleted successfully.",
+          data: null,
+        },
+        { status: 200 },
+      );
+    } catch (error) {
+      console.error("DELETE PROFILE ERROR:", error);
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              "An unexpected server error occurred while deleting the profile.",
+          },
+        },
+        { status: 500 },
+      );
     }
-
-    await prisma.profile.delete({
-      where: { id: existing.id },
-    });
-
-    return NextResponse.json(
-      ApiResponse.success(null, "Profile berhasil dihapus"),
-      { status: 200 },
-    );
-  } catch (error) {
-    console.error(error);
-
-    return NextResponse.json(
-      ApiResponse.error("Gagal menghapus profile", 500),
-      { status: 500 },
-    );
-  }
-});
+  }),
+);

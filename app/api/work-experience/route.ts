@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { withAuth } from "@/lib/with-auth";
-import { ApiResponse } from "@/lib/response/api-response";
-import { CreateWorkExperienceSchema } from "@/lib/validation/workExperience";
+import { prisma } from "@/infrastructure/database/prisma";
+import { withAuth } from "@/shared/http/with-auth";
+import { CreateWorkExperienceSchema } from "@/shared/validation/workExperience";
+import { withErrorHandler } from "@/shared/http/with-error-handler";
 
-export const GET = withAuth(async (req: Request) => {
-  try {
+export const GET = withErrorHandler(
+  withAuth(async (req: Request) => {
     const { searchParams } = new URL(req.url);
 
     const page = Number(searchParams.get("page") ?? 1);
     const limit = Number(searchParams.get("limit") ?? 10);
 
-    const safePage = page < 1 ? 1 : page;
-    const safeLimit = limit > 50 ? 50 : limit; // max 50 biar aman
+    const safePage = Number.isNaN(page) || page < 1 ? 1 : page;
+
+    const safeLimit =
+      Number.isNaN(limit) || limit < 1 ? 10 : limit > 50 ? 50 : limit;
 
     const skip = (safePage - 1) * safeLimit;
 
@@ -35,42 +37,55 @@ export const GET = withAuth(async (req: Request) => {
     ]);
 
     return NextResponse.json(
-      ApiResponse.success(
-        {
+      {
+        success: true,
+        message: "Work experiences retrieved successfully",
+        data: {
           items,
           meta: {
             page: safePage,
             limit: safeLimit,
-            total,
+            totalItems: total,
             totalPages: Math.ceil(total / safeLimit),
           },
         },
-        "Work experience berhasil diambil",
-      ),
+      },
       { status: 200 },
     );
-  } catch (error) {
-    console.error(error);
+  }),
+);
 
-    return NextResponse.json(
-      ApiResponse.error("Gagal mengambil work experience", 500),
-      { status: 500 },
-    );
-  }
-});
+export const POST = withErrorHandler(
+  withAuth(async (req: Request) => {
+    let body: unknown;
 
-export const POST = withAuth(async (req: Request) => {
-  try {
-    const body = await req.json();
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_JSON",
+            message: "Request body must be valid JSON",
+          },
+        },
+        { status: 400 },
+      );
+    }
 
     const validation = CreateWorkExperienceSchema.safeParse(body);
 
     if (!validation.success) {
       return NextResponse.json(
-        ApiResponse.error(
-          validation.error.errors.map((e) => e.message).join(", "),
-          400,
-        ),
+        {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid input data",
+            fields: validation.error.flatten().fieldErrors,
+          },
+        },
         { status: 400 },
       );
     }
@@ -92,19 +107,12 @@ export const POST = withAuth(async (req: Request) => {
     });
 
     return NextResponse.json(
-      ApiResponse.success(
-        newExperience,
-        "Work experience berhasil ditambahkan",
-        201,
-      ),
+      {
+        success: true,
+        message: "Work experience created successfully",
+        data: newExperience,
+      },
       { status: 201 },
     );
-  } catch (error) {
-    console.error(error);
-
-    return NextResponse.json(
-      ApiResponse.error("Gagal menambahkan work experience", 500),
-      { status: 500 },
-    );
-  }
-});
+  }),
+);

@@ -1,18 +1,29 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { deleteFromCloudinary, uploadToCloudinary } from "@/lib/cloudinary";
-import { ApiResponse } from "@/lib/response/api-response";
-import { withAuth } from "@/lib/with-auth";
-import { UpdateProjectSchema } from "@/lib/validation/projects";
+import { prisma } from "@/infrastructure/database/prisma";
+import {
+  deleteFromCloudinary,
+  uploadToCloudinary,
+} from "@/infrastructure/storage/cloudinary";
+import { withAuth } from "@/shared/http/with-auth";
+import { UpdateProjectSchema } from "@/shared/validation/projects";
+import { withErrorHandler } from "@/shared/http/with-error-handler";
 
-export const PATCH = withAuth(async (req, { params }) => {
-  try {
-    const { id } = await params!;
+export const PATCH = withErrorHandler(
+  withAuth(async (req: Request, context) => {
+    const resolvedParams = await context.params;
+    const id = resolvedParams?.id;
 
-    if (!id) {
-      return NextResponse.json(ApiResponse.error("ID tidak valid", 400), {
-        status: 400,
-      });
+    if (!id || id.trim() === "") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_ID",
+            message: "Invalid project ID",
+          },
+        },
+        { status: 400 },
+      );
     }
 
     const project = await prisma.project.findUnique({
@@ -24,57 +35,60 @@ export const PATCH = withAuth(async (req, { params }) => {
 
     if (!project) {
       return NextResponse.json(
-        ApiResponse.error("Proyek tidak ditemukan", 404),
+        {
+          success: false,
+          error: {
+            code: "PROJECT_NOT_FOUND",
+            message: "Project not found",
+          },
+        },
         { status: 404 },
       );
     }
 
     const formData = await req.formData();
 
-    const skillsRaw = formData.get("skills") as string | null;
-
-    let parsedSkills: string[] | undefined;
-
-    if (skillsRaw) {
-      try {
-        const parsed = JSON.parse(skillsRaw);
-        if (!Array.isArray(parsed)) throw new Error();
-        parsedSkills = parsed;
-      } catch {
-        return NextResponse.json(
-          ApiResponse.error("Format skills tidak valid", 400),
-          { status: 400 },
-        );
-      }
-    }
+    // ✅ Parse skillIds from FormData (multiple entries)
+    const skillIds = formData.getAll("skillIds") as string[];
+    const parsedSkills = skillIds.length > 0 ? skillIds : undefined;
 
     const validation = UpdateProjectSchema.safeParse({
       title: formData.get("title"),
       description: formData.get("description"),
       link: formData.get("link"),
       projectImage: formData.get("projectImage"),
-      skills: parsedSkills,
+      skillIds: parsedSkills,
     });
 
     if (!validation.success) {
       return NextResponse.json(
-        ApiResponse.error(
-          validation.error.errors.map((e) => e.message).join(", "),
-          400,
-        ),
+        {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid input data",
+            fields: validation.error.flatten().fieldErrors,
+          },
+        },
         { status: 400 },
       );
     }
 
-    const { title, description, link, projectImage, skills } = validation.data;
+    const {
+      title,
+      description,
+      link,
+      projectImage,
+      skillIds: skills,
+    } = validation.data;
 
-    // 🔥 Merge dengan existing
+    // 🔥 Merge with existing
     const finalTitle = title ?? project.title;
     const finalDescription = description ?? project.description;
     const finalLink = link ?? project.link;
     const finalSkills = skills ?? project.techStack.map((s) => s.skillId);
 
-    // 🔥 Validasi skill ID kalau berubah
+    // 🔥 Validate skills if changed
     if (skills) {
       const validSkills = await prisma.skill.findMany({
         where: { id: { in: finalSkills } },
@@ -83,33 +97,43 @@ export const PATCH = withAuth(async (req, { params }) => {
 
       if (validSkills.length !== finalSkills.length) {
         return NextResponse.json(
-          ApiResponse.error("Beberapa skill tidak valid", 400),
+          {
+            success: false,
+            error: {
+              code: "INVALID_SKILL_REFERENCE",
+              message: "One or more skills are invalid",
+            },
+          },
           { status: 400 },
         );
       }
     }
 
-    // 🔥 DETEKSI PERUBAHAN
+    // 🔥 Change detection
     const oldSkillIds = project.techStack.map((s) => s.skillId).sort();
 
     const newSkillIds = [...finalSkills].sort();
 
-    const isTitleChanged = finalTitle !== project.title;
-    const isDescriptionChanged = finalDescription !== project.description;
-    const isLinkChanged = finalLink !== project.link;
-    const isImageChanged = !!projectImage;
     const isSkillsChanged =
-      JSON.stringify(oldSkillIds) !== JSON.stringify(newSkillIds);
+      oldSkillIds.length !== newSkillIds.length ||
+      oldSkillIds.some((id, index) => id !== newSkillIds[index]);
 
-    if (
-      !isTitleChanged &&
-      !isDescriptionChanged &&
-      !isLinkChanged &&
-      !isImageChanged &&
-      !isSkillsChanged
-    ) {
+    const isChanged =
+      finalTitle !== project.title ||
+      finalDescription !== project.description ||
+      finalLink !== project.link ||
+      !!projectImage ||
+      isSkillsChanged;
+
+    if (!isChanged) {
       return NextResponse.json(
-        ApiResponse.error("Minimal satu perubahan harus dilakukan", 400),
+        {
+          success: false,
+          error: {
+            code: "NO_CHANGES",
+            message: "At least one change must be made",
+          },
+        },
         { status: 400 },
       );
     }
@@ -120,7 +144,11 @@ export const PATCH = withAuth(async (req, { params }) => {
       const uploadedUrl = await uploadToCloudinary(projectImage, "projects");
 
       if (project.projectImage) {
-        await deleteFromCloudinary(project.projectImage);
+        try {
+          await deleteFromCloudinary(project.projectImage);
+        } catch (err) {
+          console.error("Cloudinary delete error:", err);
+        }
       }
 
       imageUrl = uploadedUrl;
@@ -147,28 +175,54 @@ export const PATCH = withAuth(async (req, { params }) => {
       },
     });
 
+    // 🔥 Transform response biar konsisten dengan GET
+    const formattedProject = {
+      id: updatedProject.id,
+      title: updatedProject.title,
+      description: updatedProject.description,
+      link: updatedProject.link,
+      projectImage: updatedProject.projectImage,
+      createdAt: updatedProject.createdAt,
+      updatedAt: updatedProject.updatedAt,
+      skills: updatedProject.techStack.map((t) => t.skill),
+    };
+
     return NextResponse.json(
-      ApiResponse.success(updatedProject, "Project berhasil diperbarui"),
+      {
+        success: true,
+        message: "Project updated successfully",
+        data: formattedProject,
+      },
       { status: 200 },
     );
-  } catch (error) {
-    console.error("Error updating project:", error);
 
     return NextResponse.json(
-      ApiResponse.error("Gagal memperbarui project", 500),
-      { status: 500 },
+      {
+        success: true,
+        message: "Project updated successfully",
+        data: updatedProject,
+      },
+      { status: 200 },
     );
-  }
-});
+  }),
+);
 
-export const DELETE = withAuth(async (req, { params }) => {
-  try {
-    const { id } = await params!;
+export const DELETE = withErrorHandler(
+  withAuth(async (req: Request, context) => {
+    const resolvedParams = await context.params;
+    const id = resolvedParams?.id;
 
     if (!id || id.trim() === "") {
-      return NextResponse.json(ApiResponse.error("ID tidak valid", 400), {
-        status: 400,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_ID",
+            message: "Invalid project ID",
+          },
+        },
+        { status: 400 },
+      );
     }
 
     const project = await prisma.project.findUnique({
@@ -182,15 +236,18 @@ export const DELETE = withAuth(async (req, { params }) => {
 
     if (!project) {
       return NextResponse.json(
-        ApiResponse.error("Project tidak ditemukan", 404),
+        {
+          success: false,
+          error: {
+            code: "PROJECT_NOT_FOUND",
+            message: "Project not found",
+          },
+        },
         { status: 404 },
       );
     }
 
-    await prisma.project.delete({
-      where: { id },
-    });
-
+    // 🔥 Hapus image dulu (optional safety approach)
     if (project.projectImage) {
       try {
         await deleteFromCloudinary(project.projectImage);
@@ -199,22 +256,21 @@ export const DELETE = withAuth(async (req, { params }) => {
       }
     }
 
+    // 🔥 Delete project (cascade relation otomatis)
+    await prisma.project.delete({
+      where: { id },
+    });
+
     return NextResponse.json(
-      ApiResponse.success(
-        {
+      {
+        success: true,
+        message: "Project deleted successfully",
+        data: {
           id: project.id,
           title: project.title,
         },
-        "Project berhasil dihapus",
-      ),
+      },
       { status: 200 },
     );
-  } catch (error) {
-    console.error("Error deleting project:", error);
-
-    return NextResponse.json(
-      ApiResponse.error("Terjadi kesalahan saat menghapus project", 500),
-      { status: 500 },
-    );
-  }
-});
+  }),
+);
