@@ -58,7 +58,7 @@ const Navbar = () => {
       transition={{ duration: 0.5 }}
       className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
         isScrolled
-          ? "bg-white/90 backdrop-blur-md shadow-sm border-b border-[#e6f3e6]"
+          ? "bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-sm border-b border-[#e6f3e6] dark:border-dark-soft/20"
           : "bg-transparent"
       }`}
     >
@@ -70,7 +70,7 @@ const Navbar = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <span className="text-2xl font-light text-[#2d4a2d] tracking-wide">
+            <span className="text-2xl font-light text-[#2d4a2d] dark:text-pastel-soft tracking-wide">
               ✦ portfolio
             </span>
           </motion.div>
@@ -83,8 +83,8 @@ const Navbar = () => {
                 onClick={() => handleScroll(item.id)}
                 className={`relative px-4 py-2 text-sm font-medium transition-colors rounded-full ${
                   activeSection === item.id
-                    ? "text-[#2d4a2d]"
-                    : "text-[#4a6b4a] hover:text-[#2d4a2d]"
+                    ? "text-[#2d4a2d] dark:text-pastel-soft"
+                    : "text-[#4a6b4a] dark:text-gray-400 hover:text-[#2d4a2d] dark:hover:text-pastel-soft"
                 }`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -93,7 +93,7 @@ const Navbar = () => {
                 {activeSection === item.id && (
                   <motion.div
                     layoutId="activeSection"
-                    className="absolute inset-0 bg-[#e6f3e6] rounded-full -z-10"
+                    className="absolute inset-0 bg-[#e6f3e6] dark:bg-dark-soft/20 rounded-full -z-10"
                     transition={{ type: "spring", duration: 0.5 }}
                   />
                 )}
@@ -105,7 +105,7 @@ const Navbar = () => {
           <div className="md:hidden">
             <motion.button
               onClick={() => setIsOpen(!isOpen)}
-              className="text-[#4a6b4a] hover:text-[#2d4a2d] focus:outline-none p-2"
+              className="text-[#4a6b4a] dark:text-gray-400 hover:text-[#2d4a2d] dark:hover:text-pastel-soft focus:outline-none p-2"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
@@ -122,7 +122,7 @@ const Navbar = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.2 }}
-          className="md:hidden bg-pastel-green/20 backdrop-blur-md border-t border-[#e6f3e6]"
+          className="md:hidden bg-pastel-green/20 dark:bg-gray-800/90 backdrop-blur-md border-t border-[#e6f3e6] dark:border-dark-soft/20"
         >
           <div className="px-4 py-2 space-y-1">
             {menuItems.map((item) => (
@@ -131,8 +131,8 @@ const Navbar = () => {
                 onClick={() => handleScroll(item.id)}
                 className={`block w-full text-left px-4 py-3 text-base font-medium rounded-lg transition-colors ${
                   activeSection === item.id
-                    ? "bg-[#e6f3e6] text-[#2d4a2d]"
-                    : "text-[#4a6b4a] hover:bg-[#e6f3e6] hover:text-[#2d4a2d]"
+                    ? "bg-[#e6f3e6] dark:bg-dark-soft/20 text-[#2d4a2d] dark:text-pastel-soft"
+                    : "text-[#4a6b4a] dark:text-gray-400 hover:bg-[#e6f3e6] dark:hover:bg-dark-soft/20 hover:text-[#2d4a2d] dark:hover:text-pastel-soft"
                 }`}
                 whileHover={{ x: 10 }}
                 whileTap={{ scale: 0.98 }}

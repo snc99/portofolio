@@ -33,7 +33,7 @@ export const GET = withErrorHandler(
       {
         success: true,
         message: "Social media retrieved successfully.",
-        data, // should contain items + meta
+        data,
       },
       { status: 200 },
     );

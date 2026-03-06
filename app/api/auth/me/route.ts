@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/infrastructure/security/auth";
-import { prisma } from "@/infrastructure/database/prisma";
+import { userRepository } from "@/modules/user/user.repository";
 
 export async function GET() {
   try {
     const user = await requireAuth();
 
-    const admin = await prisma.admin.findUnique({
-      where: { id: user.id },
-      select: {
-        id: true,
-        nama: true,
-        email: true,
-      },
-    });
+    const admin = await userRepository.findById(user.id);
 
     if (!admin) {
       return NextResponse.json(
@@ -34,13 +27,13 @@ export async function GET() {
         message: "Profile retrieved successfully",
         data: {
           id: admin.id,
-          name: admin.nama, // mapping tetap di BE (ini bagus)
+          name: admin.nama,
           email: admin.email,
         },
       },
       { status: 200 },
     );
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         success: false,

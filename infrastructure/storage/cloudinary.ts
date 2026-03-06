@@ -26,7 +26,7 @@ export async function uploadToCloudinary(
         {
           resource_type: "auto",
           folder: folder || undefined,
-          public_id: file.name.split(".")[0], // Menggunakan nama asli file (tanpa ekstensi)
+          public_id: file.name.split(".")[0],
         },
         (error, result) => {
           if (error) {

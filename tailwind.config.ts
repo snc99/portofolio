@@ -17,6 +17,13 @@ export default {
           light: "#f0f9f0",
           cream: "#f8fff8",
         },
+        dark: {
+          green: "#1a2e1a",
+          mint: "#1f3b1f",
+          soft: "#2a4a2a",
+          light: "#1f2e1f",
+          cream: "#1a2a1a",
+        },
         white: "#FFFFFF",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",

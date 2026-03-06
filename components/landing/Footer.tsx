@@ -1,130 +1,144 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Heart, ArrowUp, Github, Linkedin, Twitter } from "lucide-react";
+import { Heart, ArrowUp, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function Footer() {
+  const [showScroll, setShowScroll] = useState(false);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const socialLinks = [
-    {
-      icon: <Github size={18} />,
-      href: "https://github.com/",
-      label: "GitHub",
-    },
-    {
-      icon: <Linkedin size={18} />,
-      href: "https://linkedin.com/",
-      label: "LinkedIn",
-    },
-    {
-      icon: <Twitter size={18} />,
-      href: "https://twitter.com/",
-      label: "Twitter",
-    },
-  ];
+  // Show scroll button only after scrolling down
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScroll(window.scrollY > 300);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <footer className="relative bg-gradient-to-b from-white to-pastel-light border-t border-pastel-green pt-12 pb-6 px-4 sm:px-6 lg:px-8 overflow-hidden">
-      {/* Decorative elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-32 h-32 bg-pastel-mint rounded-full opacity-20 blur-2xl"></div>
-        <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-pastel-soft rounded-full opacity-20 blur-2xl"></div>
-      </div>
+    <motion.footer
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6 }}
+      className="border-t bg-gradient-to-b from-white to-gray-50/50 dark:from-gray-900 dark:to-dark-light py-8 px-4 relative overflow-hidden"
+    >
+      {/* Decorative background line */}
+      <motion.div
+        className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-pastel-green dark:via-dark-soft to-transparent"
+        initial={{ scaleX: 0 }}
+        whileInView={{ scaleX: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.2, delay: 0.2 }}
+      />
 
-      <div className="max-w-6xl mx-auto relative z-10">
-        {/* Main footer content */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-          {/* Brand section */}
-          <div className="text-center md:text-left">
-            <h3 className="text-2xl font-light text-gray-800 mb-2">
-              <span className="text-[#2d4a2d] font-medium">Irvan</span> Sandy
-            </h3>
-            <p className="text-sm text-gray-500 max-w-xs mx-auto md:mx-0">
-              Building digital experiences with passion and purpose.
-            </p>
-          </div>
-
-          {/* Quick links */}
-          <div className="text-center">
-            <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
-              Quick Links
-            </h4>
-            <ul className="space-y-2">
-              {["About", "Skills", "Projects", "Contact"].map((link) => (
-                <li key={link}>
-                  <a
-                    href={`#${link.toLowerCase()}`}
-                    className="text-sm text-gray-500 hover:text-[#2d4a2d] transition-colors"
-                  >
-                    {link}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Social links */}
-          <div className="text-center md:text-right">
-            <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
-              Connect With Me
-            </h4>
-            <div className="flex justify-center md:justify-end space-x-3">
-              {socialLinks.map((social, idx) => (
-                <motion.a
-                  key={idx}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 bg-pastel-green/50 rounded-lg text-[#2d4a2d] hover:bg-[#2d4a2d] hover:text-white transition-all duration-300"
-                  whileHover={{ y: -3 }}
-                  whileTap={{ scale: 0.95 }}
-                  aria-label={social.label}
-                >
-                  {social.icon}
-                </motion.a>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="w-full h-px bg-gradient-to-r from-transparent via-pastel-green to-transparent my-6"></div>
-
-        {/* Bottom bar */}
+      <div className="max-w-6xl mx-auto relative">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-500 flex items-center gap-1">
-            © {new Date().getFullYear()} Made with
-            <Heart
-              size={14}
-              className="text-pink-400 fill-pink-400 animate-pulse"
-            />
-            by Irvan Sandy
-          </p>
+          {/* Left: Copyright dengan animasi */}
+          <motion.p
+            className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400"
+            whileHover={{ scale: 1.02 }}
+          >
+            <span>© {new Date().getFullYear()}</span>
 
-          <div className="flex items-center gap-4">
-            <p className="text-xs text-gray-400">v1.0.0</p>
+            <motion.span
+              animate={{
+                scale: [1, 1.2, 1],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                repeatType: "reverse",
+              }}
+              className="inline-block mx-1"
+            >
+              <Heart
+                size={14}
+                className="text-pastel-green dark:text-dark-soft fill-pastel-green/30 dark:fill-dark-soft/30 hover:fill-pastel-green dark:hover:fill-dark-soft transition-all"
+              />
+            </motion.span>
 
-            {/* Back to top button */}
+            <span className="dark:text-gray-400">by</span>
+
+            <motion.span
+              className="font-medium text-gray-700 dark:text-gray-300"
+              whileHover={{ color: "#6da78d" }} // Hanya untuk light mode, dark mode di-handle oleh class
+            >
+              Irvan Sandy
+            </motion.span>
+
+            {/* Sparkles muncul saat hover */}
+            <motion.span
+              initial={{ opacity: 0, scale: 0 }}
+              whileHover={{ opacity: 1, scale: 1 }}
+              className="inline-block ml-1"
+            >
+              <Sparkles
+                size={12}
+                className="text-pastel-green dark:text-dark-soft"
+              />
+            </motion.span>
+          </motion.p>
+
+          {/* Right: Back to top dengan animasi */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={showScroll ? { y: 0, opacity: 1 } : { y: 20, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
             <motion.button
               onClick={scrollToTop}
-              className="p-2 bg-pastel-green/50 rounded-full text-[#2d4a2d] hover:bg-[#2d4a2d] hover:text-white transition-all duration-300 group"
-              whileHover={{ y: -3 }}
+              className="group relative p-3 bg-gradient-to-br from-pastel-green/50 to-pastel-soft/30 dark:from-dark-green/50 dark:to-dark-soft/30 rounded-full text-[#2d4a2d] dark:text-pastel-soft hover:bg-[#2d4a2d] dark:hover:bg-dark-green hover:text-white dark:hover:text-white transition-all shadow-md hover:shadow-lg"
+              whileHover={{
+                y: -4,
+                scale: 1.1,
+                transition: { type: "spring", stiffness: 400 },
+              }}
               whileTap={{ scale: 0.95 }}
               aria-label="Back to top"
             >
-              <ArrowUp size={16} className="group-hover:animate-bounce" />
+              <ArrowUp size={18} />
+
+              {/* Ripple effect */}
+              <motion.span
+                className="absolute inset-0 rounded-full bg-pastel-green/20 dark:bg-dark-soft/20"
+                initial={{ scale: 0, opacity: 0 }}
+                whileHover={{ scale: 1.5, opacity: 0 }}
+                transition={{ duration: 0.8 }}
+              />
+
+              {/* Tooltip */}
+              <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs bg-gray-800 dark:bg-gray-900 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                Back to top
+              </span>
             </motion.button>
-          </div>
+          </motion.div>
         </div>
 
-        {/* Additional note */}
-        <p className="text-xs text-gray-400 text-center mt-6">
-          Designed and built with 🍃 for a clean, modern look
-        </p>
+        {/* Decorative dots */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-1">
+          {[...Array(3)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="w-1 h-1 rounded-full bg-pastel-green/30 dark:bg-dark-soft/30"
+              animate={{
+                y: [0, -3, 0],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                delay: i * 0.3,
+              }}
+            />
+          ))}
+        </div>
       </div>
-    </footer>
+    </motion.footer>
   );
 }

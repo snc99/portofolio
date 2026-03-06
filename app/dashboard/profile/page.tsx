@@ -282,7 +282,6 @@ export default function ProfilePage() {
   };
 
   if (loading) return <Loading />;
-  if (error) return <ErrorServer />;
 
   return (
     <div className="min-h-screen bg-gray-50">

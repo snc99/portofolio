@@ -27,8 +27,8 @@ export const GET = withErrorHandler(
 
       if (!profile) {
         return NextResponse.json(
-          ApiResponse.error("Profile not found", "NOT_FOUND"),
-          { status: 404 },
+          ApiResponse.success(null, "Profile is empty"),
+          { status: 200 },
         );
       }
 

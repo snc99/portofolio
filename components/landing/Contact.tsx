@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import {
   Mail,
   User,
@@ -9,16 +9,27 @@ import {
   Send,
   Phone,
   MapPin,
+  Sparkles,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
-export default function Contact() {
+interface SocialMedia {
+  id: string;
+  platform: string;
+  url: string;
+  photo: string;
+}
+
+export default function Contact({ data = [] }: { data: SocialMedia[] }) {
   const [submitted, setSubmitted] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     message: "",
   });
+  const sectionRef = useRef(null);
+  const isInView = useInView(sectionRef, { once: true, amount: 0.1 });
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -31,7 +42,6 @@ export default function Contact() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Simulasi pengiriman
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);
@@ -63,50 +73,80 @@ export default function Contact() {
 
   return (
     <section
+      ref={sectionRef}
       id="contact"
-      className="relative bg-gradient-to-b from-white to-pastel-light py-20 px-4 sm:px-6 lg:px-8 overflow-hidden min-h-screen flex items-center"
+      className="relative bg-gradient-to-b from-white to-pastel-light dark:from-gray-900 dark:to-dark-light py-20 px-4 sm:px-6 lg:px-8 overflow-hidden min-h-screen flex items-center"
     >
-      {/* Decorative elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-20 w-72 h-72 bg-pastel-mint rounded-full opacity-20 blur-3xl"></div>
-        <div className="absolute bottom-20 right-20 w-72 h-72 bg-pastel-soft rounded-full opacity-20 blur-3xl"></div>
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          className="absolute top-20 left-20 w-72 h-72 bg-pastel-mint dark:bg-dark-mint/30 rounded-full opacity-20 blur-3xl"
+          animate={{
+            x: [0, 30, 0],
+            y: [0, -30, 0],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{ duration: 8, repeat: Infinity }}
+        />
+        <motion.div
+          className="absolute bottom-20 right-20 w-72 h-72 bg-pastel-soft dark:bg-dark-soft/30 rounded-full opacity-20 blur-3xl"
+          animate={{
+            x: [0, -40, 0],
+            y: [0, 40, 0],
+            scale: [1, 1.3, 1],
+          }}
+          transition={{ duration: 10, repeat: Infinity }}
+        />
       </div>
 
       <div className="max-w-6xl mx-auto w-full relative z-10">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center justify-center p-3 bg-pastel-green rounded-full mb-4">
-            <Mail size={28} className="text-[#2d4a2d]" />
-          </div>
-          <h2 className="text-4xl md:text-5xl font-light text-gray-800 mb-4">
-            Get In <span className="text-[#2d4a2d] font-medium">Touch</span>
+          <motion.div
+            className="inline-flex items-center justify-center p-3 bg-pastel-green dark:bg-dark-soft rounded-full mb-4 relative"
+            whileHover={{ scale: 1.1, rotate: 5 }}
+          >
+            <Mail size={28} className="text-[#2d4a2d] dark:text-white" />
+          </motion.div>
+
+          <h2 className="text-4xl md:text-5xl font-light text-gray-800 dark:text-gray-200 mb-4">
+            Get In{" "}
+            <span className="text-[#2d4a2d] dark:text-pastel-soft font-medium">
+              Touch
+            </span>
           </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
+
+          <motion.p
+            className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto"
+            initial={{ opacity: 0 }}
+            animate={isInView ? { opacity: 1 } : {}}
+            transition={{ delay: 0.2 }}
+          >
             Have a question or want to work together? Feel free to reach out!
-          </p>
-          <div className="w-24 h-1 bg-pastel-soft mx-auto rounded-full mt-6"></div>
+          </motion.p>
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-8 items-start">
           {/* Left column - Contact Info */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="space-y-6"
           >
             {/* Contact info cards */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-pastel-green shadow-lg">
-              <h3 className="text-2xl font-light text-gray-800 mb-6">
-                Let's{" "}
-                <span className="text-[#2d4a2d] font-medium">Connect</span>
+            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 border border-pastel-green dark:border-dark-soft shadow-lg">
+              <h3 className="text-2xl font-light text-gray-800 dark:text-gray-200 mb-6">
+                Let's
+                <span className="text-[#2d4a2d] dark:text-pastel-soft font-medium">
+                  {" "}
+                  Connect
+                </span>
               </h3>
 
               <div className="space-y-4">
@@ -114,61 +154,93 @@ export default function Contact() {
                   <motion.a
                     key={idx}
                     href={info.link}
-                    className="flex items-center gap-4 p-4 bg-pastel-green/20 rounded-xl hover:bg-pastel-green/40 transition-all duration-300 group"
+                    className="flex items-center gap-4 p-4 bg-pastel-green/20 dark:bg-dark-soft/20 rounded-xl hover:bg-pastel-green/40 dark:hover:bg-dark-soft/40 transition-all duration-300 group relative overflow-hidden"
                     whileHover={{ x: 10 }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={isInView ? { opacity: 1, x: 0 } : {}}
+                    transition={{ delay: 0.4 + idx * 0.1 }}
                   >
-                    <div className="p-3 bg-pastel-green rounded-full text-[#2d4a2d] group-hover:bg-[#2d4a2d] group-hover:text-white transition-colors">
+                    <div className="p-3 bg-pastel-green dark:bg-dark-soft rounded-full text-[#2d4a2d] dark:text-white group-hover:bg-[#2d4a2d] dark:group-hover:bg-dark-green group-hover:text-white transition-colors">
                       {info.icon}
                     </div>
+
                     <div>
-                      <p className="text-sm text-gray-500">{info.label}</p>
-                      <p className="text-gray-800 font-medium">{info.value}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {info.label}
+                      </p>
+                      <p className="text-gray-800 dark:text-gray-200 font-medium">
+                        {info.value}
+                      </p>
                     </div>
                   </motion.a>
                 ))}
               </div>
 
-              {/* Social media quick links */}
-              <div className="mt-8 pt-6 border-t border-pastel-green">
-                <p className="text-sm text-gray-500 mb-4">Follow me on:</p>
-                <div className="flex gap-3">
-                  {["Github", "LinkedIn", "Twitter"].map((social, idx) => (
-                    <motion.a
-                      key={idx}
-                      href="#"
-                      className="px-4 py-2 bg-pastel-green/20 rounded-lg text-sm text-[#2d4a2d] hover:bg-[#2d4a2d] hover:text-white transition-colors"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {social}
-                    </motion.a>
-                  ))}
-                </div>
-              </div>
-            </div>
+              {/* Social Media */}
+              <motion.div
+                className="mt-8 pt-6 border-t border-pastel-green dark:border-dark-soft"
+                initial={{ opacity: 0 }}
+                animate={isInView ? { opacity: 1 } : {}}
+                transition={{ delay: 0.8 }}
+              >
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-2">
+                  <Sparkles
+                    size={14}
+                    className="text-[#6da78d] dark:text-pastel-soft"
+                  />
+                  Connect with me
+                </p>
 
-            {/* Quick response note */}
-            <div className="bg-[#2d4a2d]/5 rounded-xl p-4 border border-pastel-green">
-              <p className="text-sm text-gray-600">
-                <span className="font-semibold text-[#2d4a2d]">
-                  ⚡ Quick response:
-                </span>{" "}
-                I typically reply within 24 hours.
-              </p>
+                <div className="flex gap-4 flex-wrap items-center">
+                  {data.length > 0 ? (
+                    data.map((social, idx) => (
+                      <motion.a
+                        key={social.id}
+                        href={social.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="relative group"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={isInView ? { opacity: 1, y: 0 } : {}}
+                        transition={{ delay: 0.9 + idx * 0.1 }}
+                      >
+                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-pastel-green/20 dark:border-dark-soft/20 group-hover:border-pastel-green dark:group-hover:border-dark-soft transition-colors">
+                          <img
+                            src={social.photo}
+                            alt={social.platform}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+
+                        <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs bg-gray-800 dark:bg-gray-900 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                          {social.platform}
+                        </span>
+                      </motion.a>
+                    ))
+                  ) : (
+                    <p className="text-sm px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-500 dark:text-gray-400">
+                      No social media yet
+                    </p>
+                  )}
+                </div>
+              </motion.div>
             </div>
           </motion.div>
 
           {/* Right column - Contact Form */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 border border-pastel-green shadow-xl">
-              <h3 className="text-2xl font-light text-gray-800 mb-6">
+            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl p-8 border border-pastel-green dark:border-dark-soft shadow-xl">
+              <h3 className="text-2xl font-light text-gray-800 dark:text-gray-200 mb-6">
                 Send a{" "}
-                <span className="text-[#2d4a2d] font-medium">Message</span>
+                <span className="text-[#2d4a2d] dark:text-pastel-soft font-medium">
+                  Message
+                </span>
               </h3>
 
               {submitted ? (
@@ -177,18 +249,21 @@ export default function Contact() {
                   animate={{ opacity: 1, scale: 1 }}
                   className="text-center py-12"
                 >
-                  <div className="inline-flex items-center justify-center w-20 h-20 bg-pastel-green rounded-full mb-6">
-                    <CheckCircle className="w-10 h-10 text-[#2d4a2d]" />
+                  <div className="inline-flex items-center justify-center w-20 h-20 bg-pastel-green dark:bg-dark-soft rounded-full mb-6">
+                    <CheckCircle className="w-10 h-10 text-[#2d4a2d] dark:text-white" />
                   </div>
-                  <h4 className="text-xl font-semibold text-gray-800 mb-2">
-                    Message Sent!
+
+                  <h4 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                    Message Sent! 🎉
                   </h4>
-                  <p className="text-gray-600 mb-4">
+
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
                     Thank you for reaching out. I'll get back to you soon.
                   </p>
+
                   <motion.button
                     onClick={() => setSubmitted(false)}
-                    className="px-6 py-2 bg-[#2d4a2d] text-white rounded-full hover:bg-[#1e331e] transition-colors"
+                    className="px-6 py-2 bg-[#2d4a2d] dark:bg-dark-soft text-white rounded-full hover:bg-[#1e331e] dark:hover:bg-dark-green transition-colors"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
@@ -196,17 +271,18 @@ export default function Contact() {
                   </motion.button>
                 </motion.div>
               ) : (
-                <motion.form
+                <form
                   onSubmit={handleSubmit}
                   className="flex flex-col space-y-5"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.6 }}
                 >
                   {/* Input Nama */}
                   <div className="relative">
                     <User
-                      className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"
+                      className={`absolute left-4 top-1/2 transform -translate-y-1/2 transition-colors ${
+                        focusedField === "name"
+                          ? "text-[#2d4a2d] dark:text-pastel-soft"
+                          : "text-gray-400 dark:text-gray-500"
+                      }`}
                       size={18}
                     />
                     <input
@@ -214,8 +290,10 @@ export default function Contact() {
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
+                      onFocus={() => setFocusedField("name")}
+                      onBlur={() => setFocusedField(null)}
                       placeholder="Your Name"
-                      className="w-full pl-12 pr-4 py-3 bg-pastel-light/50 border border-pastel-green rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d4a2d]/30 focus:border-[#2d4a2d] transition-all text-gray-800 placeholder-gray-400"
+                      className="w-full pl-12 pr-4 py-3 bg-pastel-light/50 dark:bg-gray-700/50 border border-pastel-green dark:border-dark-soft rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d4a2d]/30 dark:focus:ring-pastel-soft/30 focus:border-[#2d4a2d] dark:focus:border-pastel-soft transition-all text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
                       required
                     />
                   </div>
@@ -223,7 +301,11 @@ export default function Contact() {
                   {/* Input Email */}
                   <div className="relative">
                     <Mail
-                      className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"
+                      className={`absolute left-4 top-1/2 transform -translate-y-1/2 transition-colors ${
+                        focusedField === "email"
+                          ? "text-[#2d4a2d] dark:text-pastel-soft"
+                          : "text-gray-400 dark:text-gray-500"
+                      }`}
                       size={18}
                     />
                     <input
@@ -231,8 +313,10 @@ export default function Contact() {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
+                      onFocus={() => setFocusedField("email")}
+                      onBlur={() => setFocusedField(null)}
                       placeholder="Your Email"
-                      className="w-full pl-12 pr-4 py-3 bg-pastel-light/50 border border-pastel-green rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d4a2d]/30 focus:border-[#2d4a2d] transition-all text-gray-800 placeholder-gray-400"
+                      className="w-full pl-12 pr-4 py-3 bg-pastel-light/50 dark:bg-gray-700/50 border border-pastel-green dark:border-dark-soft rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d4a2d]/30 dark:focus:ring-pastel-soft/30 focus:border-[#2d4a2d] dark:focus:border-pastel-soft transition-all text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
                       required
                     />
                   </div>
@@ -240,36 +324,37 @@ export default function Contact() {
                   {/* Input Pesan */}
                   <div className="relative">
                     <MessageSquare
-                      className="absolute left-4 top-4 text-gray-400"
+                      className={`absolute left-4 top-4 transition-colors ${
+                        focusedField === "message"
+                          ? "text-[#2d4a2d] dark:text-pastel-soft"
+                          : "text-gray-400 dark:text-gray-500"
+                      }`}
                       size={18}
                     />
                     <textarea
                       name="message"
                       value={formData.message}
                       onChange={handleChange}
+                      onFocus={() => setFocusedField("message")}
+                      onBlur={() => setFocusedField(null)}
                       placeholder="Your Message"
                       rows={5}
-                      className="w-full pl-12 pr-4 py-3 bg-pastel-light/50 border border-pastel-green rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d4a2d]/30 focus:border-[#2d4a2d] transition-all text-gray-800 placeholder-gray-400 resize-none"
+                      className="w-full pl-12 pr-4 py-3 bg-pastel-light/50 dark:bg-gray-700/50 border border-pastel-green dark:border-dark-soft rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2d4a2d]/30 dark:focus:ring-pastel-soft/30 focus:border-[#2d4a2d] dark:focus:border-pastel-soft transition-all text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 resize-none"
                       required
-                    ></textarea>
+                    />
                   </div>
 
                   {/* Tombol Kirim */}
                   <motion.button
                     type="submit"
-                    className="group relative flex items-center justify-center gap-2 bg-[#2d4a2d] text-white font-medium px-6 py-3 rounded-xl hover:bg-[#1e331e] transition-all shadow-lg overflow-hidden"
+                    className="group relative flex items-center justify-center gap-2 bg-[#2d4a2d] dark:bg-dark-soft text-white font-medium px-6 py-3 rounded-xl hover:bg-[#1e331e] dark:hover:bg-dark-green transition-all shadow-lg overflow-hidden"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></span>
                     <Send className="w-5 h-5" />
                     Send Message
                   </motion.button>
-
-                  <p className="text-xs text-gray-400 text-center">
-                    I'll get back to you within 24 hours
-                  </p>
-                </motion.form>
+                </form>
               )}
             </div>
           </motion.div>

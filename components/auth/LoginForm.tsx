@@ -48,7 +48,9 @@ export const LoginForm = () => {
         router.replace("/dashboard");
       }
     } catch (err) {
-      setErrors({ general: err as string });
+      setErrors({
+        general: err instanceof Error ? err.message : "Login failed",
+      });
     }
 
     setIsLoading(false);

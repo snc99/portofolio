@@ -4,13 +4,22 @@ import { signToken, SESSION_DURATION } from "@/infrastructure/security/jwt";
 import { sessionRepository } from "@/modules/auth/session.repository";
 import { userRepository } from "@/modules/user/user.repository";
 
+type LoginInput = {
+  email: string;
+  password: string;
+};
+
 export const authService = {
-  async login({ email, password }: { email: string; password: string }) {
+  async login({ email, password }: LoginInput) {
     const user = await userRepository.findByEmail(email);
-    if (!user) return null;
+    if (!user) {
+      throw new Error("Invalid credentials");
+    }
 
     const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) return null;
+    if (!isValid) {
+      throw new Error("Invalid credentials");
+    }
 
     const token = signToken({
       id: user.id,

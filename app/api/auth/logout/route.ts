@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/infrastructure/security/auth";
+import { sessionRepository } from "@/modules/auth/session.repository";
 
 export async function POST() {
   try {
-    await requireAuth();
+    const user = await requireAuth();
+
+    // hapus session redis
+    await sessionRepository.delete(user.id);
 
     const response = NextResponse.json(
       {
@@ -14,7 +18,7 @@ export async function POST() {
       { status: 200 },
     );
 
-    // Hapus cookie
+    // hapus cookie
     response.cookies.set("pw_token", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

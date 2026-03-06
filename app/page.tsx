@@ -1,46 +1,52 @@
-// app/page.tsx
 import Navbar from "../components/landing/Navbar";
-import Hero from "../components/landing/Hero";
 import About from "../components/landing/About";
 import Skills from "../components/landing/Skills";
-import WorkHistory from "../components/landing/WorkExperience";
 import Contact from "../components/landing/Contact";
 import Footer from "../components/landing/Footer";
 import Project from "@/components/landing/Project";
 import FloatingToggle from "@/components/landing/FloatingToggle";
+import Profile from "../components/landing/Profile";
+import WorkExperience from "../components/landing/WorkExperience";
 
-export default function Home() {
+import { getHomeData } from "@/modules/landing/landing.service";
+import LandingLayout from "./landing-layout";
+
+export default async function Home() {
+  const data = await getHomeData();
+
   return (
-    <main className="min-h-screen bg-gradient-to-b bg-pastel-green">
-      <Navbar />
+    <LandingLayout>
+      <main className="min-h-screen bg-gradient-to-b bg-pastel-green">
+        <Navbar />
 
-      <section id="home" className="scroll-mt-16">
-        <Hero />
-      </section>
+        <section id="home" className="scroll-mt-16">
+          <Profile data={data.profile} />
+        </section>
 
-      <section id="about" className="scroll-mt-16">
-        <About />
-      </section>
+        <section id="about" className="scroll-mt-16">
+          <About data={data.about} />
+        </section>
 
-      <section id="skills" className="scroll-mt-16 bg-pastel-green/20">
-        <Skills />
-      </section>
+        <section id="skills" className="scroll-mt-16 bg-pastel-green/20">
+          <Skills data={data.skills} />
+        </section>
 
-      <section id="work" className="scroll-mt-16">
-        <WorkHistory />
-      </section>
+        <section id="work" className="scroll-mt-16">
+          <WorkExperience data={data.workExperience} />
+        </section>
 
-      <section id="projects" className="scroll-mt-16 bg-pastel-green/20">
-        <Project />
-      </section>
+        <section id="projects" className="scroll-mt-16 bg-pastel-green/20">
+          <Project data={data.projects} />
+        </section>
 
-      <section id="contact" className="scroll-mt-16">
-        <Contact />
-      </section>
+        <section id="contact" className="scroll-mt-16">
+          <Contact data={data.socialMedia} />
+        </section>
 
-      <Footer />
+        <Footer />
 
-      <FloatingToggle />
-    </main>
+        <FloatingToggle />
+      </main>
+    </LandingLayout>
   );
 }

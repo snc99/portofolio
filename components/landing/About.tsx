@@ -2,96 +2,63 @@
 
 import { useEffect, useState, useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { User, Sparkles, Heart, Target } from "lucide-react";
+import { User } from "lucide-react";
+import Image from "next/image";
 
-export default function About() {
-  const [aboutContent, setAboutContent] = useState<string | null>(null);
+interface AboutData {
+  description: string | null;
+}
+
+export default function About({ data }: { data: AboutData | null }) {
+  const aboutContent =
+    data?.description || "Passionate quality assurance engineer.";
+
   const [displayedText, setDisplayedText] = useState("");
   const [isTypingComplete, setIsTypingComplete] = useState(false);
+
   const sectionRef = useRef(null);
   const isInView = useInView(sectionRef, { once: true, amount: 0.3 });
 
-  useEffect(() => {
-    const fetchAboutData = async () => {
-      try {
-        const res = await fetch("/api/about", { cache: "no-store" });
-        if (!res.ok) throw new Error("Failed to fetch about data");
-        const result = await res.json();
-        setAboutContent(
-          result.description ||
-            "Passionate developer with a love for creating beautiful and functional web applications. I believe in writing clean code and building experiences that make a difference.",
-        );
-      } catch (error) {
-        console.error("Error fetching about data:", error);
-        setAboutContent(
-          "Passionate developer with a love for creating beautiful and functional web applications. I believe in writing clean code and building experiences that make a difference.",
-        );
-      }
-    };
-    fetchAboutData();
-  }, []);
-
-  // Efek Typewriter - hanya jalan ketika section in view
+  // Typewriter effect
   useEffect(() => {
     if (!aboutContent || !isInView || isTypingComplete) return;
 
-    setDisplayedText(""); // Reset text saat mulai
+    setDisplayedText("");
     setIsTypingComplete(false);
+
     let index = 0;
 
     const interval = setInterval(() => {
       setDisplayedText(aboutContent.slice(0, index));
       index++;
+
       if (index > aboutContent.length) {
         clearInterval(interval);
         setIsTypingComplete(true);
       }
-    }, 30); // Kecepatan ketik sedikit lebih lambat
+    }, 30);
 
     return () => clearInterval(interval);
   }, [aboutContent, isInView]);
 
-  // Data statis untuk personal info
-  const personalInfo = [
-    { label: "Name", value: "Muhamad Irvan Sandy" },
-    { label: "Location", value: "Indonesia" },
-    { label: "Email", value: "irvan@example.com" },
-    { label: "Freelance", value: "Available" },
-  ];
-
-  // Interests/Loves
-  const loves = [
-    { icon: <Heart size={20} />, text: "Coding" },
-    { icon: <Sparkles size={20} />, text: "Design" },
-    { icon: <Target size={20} />, text: "Problem Solving" },
-  ];
-
-  const fadeInUp = {
-    initial: { opacity: 0, y: 30 },
-    animate: { opacity: 1, y: 0 },
+  const fadeInLeft = {
+    initial: { opacity: 0, x: -30 },
+    animate: { opacity: 1, x: 0 },
     transition: { duration: 0.6 },
   };
 
-  const staggerChildren = {
-    animate: {
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
+  const fadeInRight = {
+    initial: { opacity: 0, x: 30 },
+    animate: { opacity: 1, x: 0 },
+    transition: { duration: 0.6 },
   };
 
   return (
     <section
       ref={sectionRef}
       id="about"
-      className="relative bg-gradient-to-b from-white to-pastel-light py-20 px-4 sm:px-6 lg:px-8 overflow-hidden"
+      className="relative bg-gradient-to-b from-white to-pastel-light dark:from-gray-900 dark:to-dark-light py-20 px-4 sm:px-6 lg:px-8 overflow-hidden"
     >
-      {/* Decorative elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 right-0 w-64 h-64 bg-pastel-soft rounded-full opacity-20 blur-3xl"></div>
-        <div className="absolute bottom-20 left-0 w-64 h-64 bg-pastel-mint rounded-full opacity-20 blur-3xl"></div>
-      </div>
-
       <div className="max-w-6xl mx-auto relative z-10">
         {/* Header */}
         <motion.div
@@ -100,112 +67,202 @@ export default function About() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center justify-center p-2 bg-pastel-green rounded-full mb-4">
-            <User size={24} className="text-[#2d4a2d]" />
+          <div className="inline-flex items-center justify-center p-2 bg-pastel-green dark:bg-dark-soft rounded-full mb-4">
+            <User size={24} className="text-[#2d4a2d] dark:text-pastel-soft" />
           </div>
-          <h2 className="text-4xl md:text-5xl font-light text-gray-800 mb-4">
-            About <span className="text-[#2d4a2d] font-medium">Me</span>
+
+          <h2 className="text-4xl md:text-5xl font-light text-gray-800 dark:text-gray-200 mb-4">
+            About{" "}
+            <span className="text-[#2d4a2d] dark:text-pastel-soft font-medium">
+              Me
+            </span>
           </h2>
-          <div className="w-24 h-1 bg-pastel-soft mx-auto rounded-full"></div>
+
+          <div className="w-24 h-1 bg-pastel-soft dark:bg-dark-soft mx-auto rounded-full"></div>
         </motion.div>
 
-        <div className="grid lg:grid-cols-2 gap-12 items-start">
-          {/* Left column - Personal Info */}
+        {/* Content dengan Foto */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          {/* Kiri - Foto dengan Efek */}
           <motion.div
-            variants={staggerChildren}
-            initial="initial"
-            animate={isInView ? "animate" : "initial"}
-            className="space-y-6"
+            className="relative order-2 lg:order-1 flex justify-center"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={isInView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ duration: 0.6, delay: 0.2 }}
           >
-            {/* Personal info cards */}
-            <motion.div variants={fadeInUp} className="grid grid-cols-2 gap-4">
-              {personalInfo.map((info, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-pastel-green shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <p className="text-sm text-gray-500 mb-1">{info.label}</p>
-                  <p className="text-gray-800 font-medium">{info.value}</p>
-                </div>
+            {/* Lingkaran berputar */}
+            <motion.div
+              className="absolute inset-0 rounded-full border-2 border-dashed border-[#2d4a2d]/30 dark:border-pastel-soft/30"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            />
+
+            {/* Lingkaran kedua */}
+            <motion.div
+              className="absolute inset-2 rounded-full border border-[#2d4a2d]/20 dark:border-pastel-soft/20"
+              animate={{ rotate: -360 }}
+              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            />
+
+            {/* Background blur */}
+            <motion.div
+              className="absolute inset-0 bg-[#2d4a2d]/10 dark:bg-pastel-soft/10 rounded-full blur-3xl"
+              animate={{
+                scale: [1, 1.2, 1],
+                opacity: [0.2, 0.4, 0.2],
+              }}
+              transition={{ duration: 4, repeat: Infinity }}
+            />
+
+            {/* Elemen dekoratif */}
+            <motion.div
+              className="absolute -top-4 -right-4 w-20 h-20 border-2 border-[#2d4a2d]/20 dark:border-pastel-soft/20 rounded-full"
+              animate={{
+                scale: [1, 1.2, 1],
+                rotate: [0, 90, 0],
+              }}
+              transition={{ duration: 6, repeat: Infinity }}
+            />
+
+            <motion.div
+              className="absolute -bottom-4 -left-4 w-24 h-24 bg-[#2d4a2d]/5 dark:bg-pastel-soft/5 rounded-full"
+              animate={{
+                scale: [1, 1.3, 1],
+                x: [0, 10, 0],
+                y: [0, -10, 0],
+              }}
+              transition={{ duration: 5, repeat: Infinity }}
+            />
+
+            {/* Dots pattern */}
+            <motion.div
+              className="absolute -z-10 top-10 -right-10 grid grid-cols-3 gap-2"
+              animate={{
+                rotate: [0, 360],
+                scale: [1, 1.1, 1],
+              }}
+              transition={{ duration: 12, repeat: Infinity }}
+            >
+              {[...Array(9)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="w-1.5 h-1.5 bg-[#2d4a2d]/20 dark:bg-pastel-soft/20 rounded-full"
+                  animate={{
+                    scale: [1, 1.5, 1],
+                    opacity: [0.2, 0.5, 0.2],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    delay: i * 0.1,
+                  }}
+                />
               ))}
             </motion.div>
 
-            {/* What I love */}
+            {/* Foto dengan floating effect */}
             <motion.div
-              variants={fadeInUp}
-              className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-pastel-green"
+              className="relative w-64 h-64 md:w-72 md:h-72 lg:w-80 lg:h-80"
+              animate={{
+                y: [0, -10, 0],
+              }}
+              transition={{ duration: 4, repeat: Infinity }}
             >
-              <h3 className="text-lg font-medium text-gray-800 mb-4">
-                What I Love ❤️
-              </h3>
-              <div className="flex flex-wrap gap-3">
-                {loves.map((love, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 px-4 py-2 bg-pastel-green rounded-full text-[#2d4a2d]"
-                  >
-                    {love.icon}
-                    <span className="text-sm font-medium">{love.text}</span>
-                  </div>
-                ))}
+              <div className="w-full h-full rounded-full overflow-hidden shadow-2xl border-4 border-white dark:border-gray-700 relative z-10">
+                <Image
+                  src="/picture2.png"
+                  alt="About Me"
+                  width={400}
+                  height={400}
+                  className="w-full h-full object-cover"
+                />
               </div>
-            </motion.div>
 
-            {/* Fun fact / Stats */}
-            <motion.div variants={fadeInUp} className="grid grid-cols-3 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-[#2d4a2d]">2+</div>
-                <div className="text-sm text-gray-500">Years Experience</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-[#2d4a2d]">20+</div>
-                <div className="text-sm text-gray-500">Projects</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-[#2d4a2d]">10+</div>
-                <div className="text-sm text-gray-500">Happy Clients</div>
-              </div>
+              {/* Inner glow */}
+              <motion.div
+                className="absolute inset-0 rounded-full shadow-inner"
+                animate={{
+                  boxShadow: [
+                    "inset 0 0 20px rgba(45, 74, 45, 0.2)",
+                    "inset 0 0 40px rgba(45, 74, 45, 0.4)",
+                    "inset 0 0 20px rgba(45, 74, 45, 0.2)",
+                  ],
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
             </motion.div>
           </motion.div>
 
-          {/* Right column - Description with typewriter */}
+          {/* Kanan - Text Content */}
           <motion.div
-            variants={fadeInUp}
+            variants={fadeInRight}
             initial="initial"
             animate={isInView ? "animate" : "initial"}
-            className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-pastel-green shadow-lg"
+            className="order-1 lg:order-2"
           >
-            <h3 className="text-2xl font-light text-gray-800 mb-4">
-              My Story <span className="text-[#2d4a2d]">✨</span>
-            </h3>
+            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 border border-pastel-green dark:border-dark-soft shadow-lg">
+              <h3 className="text-2xl font-light text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
+                <span>My Story</span>
+                <motion.span
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="inline-block"
+                >
+                  ✨
+                </motion.span>
+              </h3>
 
-            <div className="relative">
-              <p className="text-gray-600 leading-relaxed text-lg">
-                {displayedText || (isInView ? "" : aboutContent?.slice(0, 50))}
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-lg">
+                {displayedText || (isInView ? "" : aboutContent.slice(0, 50))}
+
                 {!isTypingComplete && isInView && (
                   <motion.span
                     animate={{ opacity: [1, 0] }}
                     transition={{ duration: 0.8, repeat: Infinity }}
-                    className="inline-block w-[2px] h-5 bg-[#2d4a2d] ml-1 align-middle"
+                    className="inline-block w-[2px] h-5 bg-[#2d4a2d] dark:bg-pastel-soft ml-1 align-middle"
                   />
                 )}
               </p>
-            </div>
 
-            {/* Quote */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={isTypingComplete ? { opacity: 1 } : {}}
-              className="mt-6 p-4 bg-pastel-green/30 rounded-lg border-l-4 border-[#2d4a2d]"
-            >
-              <p className="text-gray-600 italic">
-                "Building digital experiences that matter, one line of code at a
-                time."
-              </p>
-            </motion.div>
+              {/* Decorative line after text */}
+              {isTypingComplete && (
+                <motion.div
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ duration: 0.8 }}
+                  className="h-px bg-gradient-to-r from-transparent via-[#2d4a2d]/30 dark:via-pastel-soft/30 to-transparent mt-6"
+                />
+              )}
+            </div>
           </motion.div>
         </div>
       </div>
+
+      {/* Background decoration */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-20 left-20 w-72 h-72 bg-pastel-green/20 dark:bg-dark-green/20 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute bottom-20 right-20 w-72 h-72 bg-pastel-soft/20 dark:bg-dark-soft/20 rounded-full blur-3xl animate-float animation-delay-2000"></div>
+      </div>
+
+      <style jsx>{`
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0px) translateX(0px);
+          }
+          50% {
+            transform: translateY(-20px) translateX(10px);
+          }
+        }
+
+        .animate-float {
+          animation: float 10s ease-in-out infinite;
+        }
+
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+      `}</style>
     </section>
   );
 }
