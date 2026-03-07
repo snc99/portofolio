@@ -30,7 +30,7 @@ export async function getHomeData(): Promise<HomeData> {
     ]);
 
   const safeProfile = profile ?? null;
-  const safeAbout = about ?? null; // biarkan null, handle di UI
+  const safeAbout = about ?? null;
   const formattedWorkExperience = workExperience.map((exp) => ({
     id: exp.id,
     companyName: exp.companyName,
@@ -39,6 +39,7 @@ export async function getHomeData(): Promise<HomeData> {
     endDate: exp.endDate ? exp.endDate.toISOString() : null,
     isPresent: exp.isPresent,
     description: exp.description,
+    location: exp.location,
   }));
 
   const formattedProjects = projects.map((project) => ({

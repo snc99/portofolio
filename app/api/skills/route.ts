@@ -23,6 +23,13 @@ export const GET = withErrorHandler(
         skip,
         take: safeLimit,
         orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          photo: true,
+          level: true, // ✅ ENUM BARU
+          createdAt: true,
+        },
       }),
       prisma.skill.count(),
     ]);
@@ -53,6 +60,7 @@ export const POST = withErrorHandler(
     const validation = CreateSkillSchema.safeParse({
       name: formData.get("name"),
       photo: formData.get("photo"),
+      level: formData.get("level"),
     });
 
     // 🔴 Validation error
@@ -70,7 +78,7 @@ export const POST = withErrorHandler(
       );
     }
 
-    const { name, photo } = validation.data;
+    const { name, photo, level } = validation.data;
 
     // 🔴 Duplicate check (case insensitive)
     const existing = await prisma.skill.findFirst({
@@ -99,6 +107,7 @@ export const POST = withErrorHandler(
       data: {
         name,
         photo: uploadedUrl,
+        level: level ?? undefined, // ✅ pakai default DB kalau kosong
       },
     });
 

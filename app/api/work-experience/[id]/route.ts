@@ -72,12 +72,15 @@ export const PATCH = withErrorHandler(
       );
     }
 
-    const { companyName, position, startDate, endDate, description } =
+    const { companyName, position, location, startDate, endDate, description } =
       validation.data;
 
     // 🔥 Merge with existing
     const finalCompanyName = companyName ?? existing.companyName;
     const finalPosition = position ?? existing.position;
+    const finalLocation =
+      location !== undefined ? (location ?? null) : existing.location;
+
     const finalStartDate = startDate ? new Date(startDate) : existing.startDate;
 
     const finalEndDate =
@@ -90,12 +93,27 @@ export const PATCH = withErrorHandler(
     const finalIsPresent = finalEndDate === null;
 
     const finalDescription =
-      description !== undefined ? description || null : existing.description;
+      description !== undefined ? (description ?? null) : existing.description;
+
+    // 🔥 Final date safety check
+    if (finalEndDate && finalEndDate < finalStartDate) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_DATE_RANGE",
+            message: "End date cannot be before start date",
+          },
+        },
+        { status: 400 },
+      );
+    }
 
     // 🔥 Change detection
     const isChanged =
       finalCompanyName !== existing.companyName ||
       finalPosition !== existing.position ||
+      finalLocation !== existing.location ||
       finalStartDate.getTime() !== existing.startDate.getTime() ||
       (existing.endDate?.getTime() ?? null) !==
         (finalEndDate?.getTime() ?? null) ||
@@ -120,6 +138,7 @@ export const PATCH = withErrorHandler(
       data: {
         companyName: finalCompanyName,
         position: finalPosition,
+        location: finalLocation, // ✅ field baru
         startDate: finalStartDate,
         endDate: finalEndDate,
         isPresent: finalIsPresent,

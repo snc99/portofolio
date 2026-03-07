@@ -8,6 +8,7 @@ export async function GET() {
         id: true,
         name: true,
         photo: true,
+        level: true,
       },
       orderBy: {
         createdAt: "desc",

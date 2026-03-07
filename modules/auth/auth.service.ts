@@ -30,6 +30,7 @@ export const authService = {
     return {
       user: {
         id: user.id,
+        nama: user.nama,
         email: user.email,
       },
       token,

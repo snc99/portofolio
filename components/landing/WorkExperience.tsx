@@ -13,17 +13,7 @@ import {
 import { formatWorkPeriod } from "@/shared/utils/formatPeriod";
 import { calculateWorkDuration } from "@/shared/utils/workDuration";
 import { useRef, useState, useEffect } from "react";
-
-interface WorkExperienceData {
-  id: string;
-  companyName: string;
-  position: string;
-  startDate: string;
-  endDate: string | null;
-  isPresent: boolean;
-  description: string | null;
-  location?: string;
-}
+import { WorkExperienceData } from "@/modules/landing/landing.types";
 
 export default function WorkExperience({
   data,
@@ -175,6 +165,7 @@ export default function WorkExperience({
             </motion.div>
 
             {experiences.map((exp, index) => {
+              console.log("LOCATION DEBUG:", exp.companyName, exp.location);
               const isEven = index % 2 === 0;
               const duration = calculateWorkDuration(
                 exp.startDate,

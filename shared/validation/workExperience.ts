@@ -1,16 +1,14 @@
 import { z } from "zod";
 
-/**
- * Safe date parser (YYYY-MM-DD only)
- */
+/* ================= DATE ================= */
+
 const DateStringSchema = z
   .string({ required_error: "Date is required" })
   .nonempty("Date is required")
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format");
 
-/**
- * Base fields
- */
+/* ================= BASE ================= */
+
 const BaseWorkExperienceSchema = z.object({
   companyName: z
     .string({ required_error: "Company name is required" })
@@ -26,6 +24,13 @@ const BaseWorkExperienceSchema = z.object({
     .min(3, "Position must be at least 3 characters")
     .max(100, "Position must be at most 100 characters"),
 
+  location: z
+    .string()
+    .trim()
+    .min(2, "Location must be at least 2 characters")
+    .max(100, "Location must be at most 100 characters")
+    .optional(), // ✅ sinkron DB
+
   startDate: DateStringSchema,
 
   endDate: z
@@ -37,14 +42,13 @@ const BaseWorkExperienceSchema = z.object({
   description: z
     .string()
     .trim()
-    .nonempty("Description is required")
     .min(3, "Description must be at least 3 characters")
-    .max(500, "Description must be at most 500 characters"),
+    .max(500, "Description must be at most 500 characters")
+    .optional(), // ✅ sinkron DB
 });
 
-/**
- * CREATE
- */
+/* ================= CREATE ================= */
+
 export const CreateWorkExperienceSchema = BaseWorkExperienceSchema.superRefine(
   ({ startDate, endDate }, ctx) => {
     const today = new Date();
@@ -84,9 +88,8 @@ export const CreateWorkExperienceSchema = BaseWorkExperienceSchema.superRefine(
   },
 );
 
-/**
- * UPDATE (partial)
- */
+/* ================= UPDATE ================= */
+
 export const UpdateWorkExperienceSchema =
   BaseWorkExperienceSchema.partial().superRefine(
     ({ startDate, endDate }, ctx) => {

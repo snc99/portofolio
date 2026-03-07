@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 
 type ProfileInitialData = {
   motto?: string;
+  photo?: string | null; // ✅ URL dari DB
 };
 
 export function useProfileForm(initialData?: ProfileInitialData) {
@@ -10,6 +11,8 @@ export function useProfileForm(initialData?: ProfileInitialData) {
   const getInitialValues = () => ({
     motto: initialData?.motto || "",
     cv: null as File | null,
+    photoFile: null as File | null, // ✅ file baru
+    photoUrl: initialData?.photo || null, // ✅ url lama
   });
 
   const [values, setValues] = useState(getInitialValues);
@@ -18,7 +21,7 @@ export function useProfileForm(initialData?: ProfileInitialData) {
 
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Sync kalau initialData berubah (misalnya edit buka data baru)
+  // Sync kalau initialData berubah
   useEffect(() => {
     if (isEditMode) {
       setValues(getInitialValues());
@@ -29,11 +32,13 @@ export function useProfileForm(initialData?: ProfileInitialData) {
     setErrors({});
   };
 
-  // Untuk CREATE → reset total
+  // CREATE → reset total
   const resetForCreate = () => {
     setValues({
       motto: "",
       cv: null,
+      photoFile: null,
+      photoUrl: null,
     });
 
     setErrors({});
@@ -44,7 +49,7 @@ export function useProfileForm(initialData?: ProfileInitialData) {
     }
   };
 
-  // Untuk EDIT → balik ke data DB
+  // EDIT → balik ke data DB
   const resetToInitial = () => {
     setValues(getInitialValues());
     setErrors({});

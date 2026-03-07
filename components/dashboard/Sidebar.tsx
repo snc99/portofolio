@@ -31,34 +31,13 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { state } = useSidebar();
 
-  const [user, setUser] = useState<{
-    name: string;
-    email: string;
-    avatar?: string;
-  } | null>(null);
+  const user = {
+    name: "Admin",
+    email: "admin@local",
+    avatar: "/avatar.png",
+  };
 
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await authService.me();
-        if (res.success) {
-          setUser({
-            name: res.data.name || "Irvan Sandy",
-            email: res.data.email,
-            avatar: "/avatar.png",
-          });
-        }
-      } catch {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUser();
-  }, []);
+  const loading = false;
 
   const data = {
     navMain: [

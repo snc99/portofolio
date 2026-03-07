@@ -27,6 +27,7 @@ export const GET = withErrorHandler(
           id: true,
           companyName: true,
           position: true,
+          location: true,
           startDate: true,
           endDate: true,
           isPresent: true,
@@ -90,19 +91,21 @@ export const POST = withErrorHandler(
       );
     }
 
-    const { companyName, position, startDate, endDate, description } =
+    const { companyName, position, location, startDate, endDate, description } =
       validation.data;
 
-    const isPresent = endDate === null;
+    // 🔥 Determine isPresent safely
+    const isPresent = !endDate;
 
     const newExperience = await prisma.workExperience.create({
       data: {
         companyName,
         position,
+        location: location ?? null,
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : null,
         isPresent,
-        description: description || null,
+        description: description ?? null,
       },
     });
 

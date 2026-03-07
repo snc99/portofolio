@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { Folder, Globe, Code2, Github, ExternalLink } from "lucide-react";
 import Image from "next/image";
 
@@ -20,7 +20,7 @@ interface ProjectData {
 export default function Project({ data }: { data: ProjectData[] }) {
   const projects = data || [];
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -28,7 +28,7 @@ export default function Project({ data }: { data: ProjectData[] }) {
     },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 30 },
     visible: {
       opacity: 1,
@@ -145,13 +145,19 @@ export default function Project({ data }: { data: ProjectData[] }) {
                     {/* Skills */}
                     <div className="flex flex-wrap gap-2 mb-4">
                       {project.skills.map((skill, i) => (
-                        <motion.span
+                        <motion.div
                           key={i}
-                          className="px-3 py-1 bg-pastel-green/20 dark:bg-dark-soft/30 text-xs text-[#2d4a2d] dark:text-pastel-soft rounded-full flex items-center gap-1"
-                          whileHover={{ scale: 1.05 }}
+                          className="relative w-6 h-6"
+                          whileHover={{ scale: 1.2, y: -2 }}
+                          title={skill.name}
                         >
-                          {skill.name}
-                        </motion.span>
+                          <Image
+                            src={skill.photo}
+                            alt={skill.name}
+                            fill
+                            className="object-contain"
+                          />
+                        </motion.div>
                       ))}
                     </div>
 

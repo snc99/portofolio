@@ -7,6 +7,8 @@ export async function GET() {
       select: {
         motto: true,
         cvLink: true,
+        cvFilename: true,
+        photo: true,
       },
     });
 
@@ -17,10 +19,15 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({
-      motto: profile.motto,
-      cvLink: profile.cvLink,
-    });
+    return NextResponse.json(
+      {
+        motto: profile.motto,
+        cvLink: profile.cvLink,
+        cvFilename: profile.cvFilename,
+        photo: profile.photo,
+      },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("PUBLIC PROFILE ERROR:", error);
 

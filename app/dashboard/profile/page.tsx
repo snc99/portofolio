@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Loading from "@/components/custom-ui/Loading";
-import ErrorServer from "@/components/card/errorServer";
 import PersonalInfoCard from "@/components/custom-ui/profile/personal-info/PersonalInfoCard";
 import DeleteModal from "@/components/custom-ui/profile/personal-info/DeletePersonalinfoModal";
 import EditPersonalModal from "@/components/custom-ui/profile/personal-info/EditPersonalinfoModal";
@@ -115,6 +114,11 @@ export default function ProfilePage() {
         formData.append("cv", profileForm.values.cv);
       }
 
+      // ✅ pakai photoFile
+      if (profileForm.values.photoFile) {
+        formData.append("photo", profileForm.values.photoFile);
+      }
+
       const res = await profileApi.update(formData);
 
       setPersonalInfo(res.data.data);
@@ -125,7 +129,6 @@ export default function ProfilePage() {
     } catch (err: any) {
       const errorData = err?.response?.data;
 
-      // 🔥 Validation error
       if (errorData?.error?.fields) {
         const formatted: Record<string, string> = {};
 
@@ -137,7 +140,6 @@ export default function ProfilePage() {
         return;
       }
 
-      // 🔥 No changes detected
       if (errorData?.error?.code === "NO_CHANGES") {
         toast.info("No changes detected");
         return;

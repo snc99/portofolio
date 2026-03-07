@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Loading from "@/components/custom-ui/Loading";
-import ErrorServer from "@/components/card/errorServer";
 import { toast } from "sonner";
 import WorkExperienceCard from "@/components/custom-ui/work-experience/WorkExperienceCard";
 import CreateWorkExperienceModal from "@/components/custom-ui/work-experience/CreateWorkExperienceModal";
@@ -16,6 +15,7 @@ interface WorkItem {
   id: string;
   companyName: string;
   position: string;
+  location?: string;
   startDate: string;
   endDate?: string | null;
   isPresent: boolean;
@@ -58,14 +58,16 @@ export default function WorkExperiencePage() {
 
   const handleCreate = async () => {
     workCreateForm.setLoading(true);
-    workCreateForm.setErrors({}); // reset dulu
+    workCreateForm.setErrors({});
 
     try {
       const payload = {
         ...workCreateForm.values,
+        location: workCreateForm.values.location.trim() || undefined,
         endDate: workCreateForm.values.isPresent
           ? null
           : workCreateForm.values.endDate || null,
+        description: workCreateForm.values.description?.trim() || undefined,
       };
 
       const res = await workExperienceApi.create(payload);
@@ -88,10 +90,7 @@ export default function WorkExperiencePage() {
       workCreateForm.setLoading(false);
     }
   };
-
   const handleUpdate = async () => {
-    console.log("VALUES:", workEditForm.values);
-
     if (!editingItem) return;
 
     workEditForm.setLoading(true);
@@ -100,6 +99,8 @@ export default function WorkExperiencePage() {
     try {
       const payload = {
         ...workEditForm.values,
+        location: workEditForm.values.location.trim() || undefined,
+        description: workEditForm.values.description?.trim() || undefined,
         endDate: workEditForm.values.isPresent
           ? null
           : workEditForm.values.endDate || null,
@@ -154,7 +155,12 @@ export default function WorkExperiencePage() {
   };
 
   if (loading) return <Loading />;
-  if (error) return <ErrorServer />;
+  if (error)
+    return (
+      <div className="p-4 bg-red-100 text-red-700 rounded">
+        Failed to load data
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { aboutApi } from "@/modules/about/about.api";
 import Loading from "@/components/custom-ui/Loading";
-import ErrorServer from "@/components/card/errorServer";
 import AboutCard from "@/components/custom-ui/about/AboutCard";
 import { toast } from "sonner";
 import { useAboutForm } from "@/modules/about/useAboutForm";
@@ -55,9 +54,15 @@ export default function AboutPage() {
     aboutForm.setErrors({});
 
     try {
-      const res = await aboutApi.create({
-        description: aboutForm.values.description,
-      });
+      const formData = new FormData();
+      formData.append("description", aboutForm.values.description);
+
+      // ✅ kirim foto jika ada
+      if (aboutForm.values.photoFile) {
+        formData.append("photo", aboutForm.values.photoFile);
+      }
+
+      const res = await aboutApi.create(formData);
 
       setAboutData(res.data.data);
 
@@ -91,11 +96,28 @@ export default function AboutPage() {
     aboutForm.setErrors({});
 
     try {
-      const res = await aboutApi.update({
-        description: aboutForm.values.description,
-      });
+      // 🔥 Detect changes
+      const isDescriptionChanged =
+        aboutForm.values.description.trim() !== aboutData.description.trim();
 
-      // ✅ Update local state
+      const isPhotoChanged = !!aboutForm.values.photoFile;
+
+      if (!isDescriptionChanged && !isPhotoChanged) {
+        toast.info("No changes detected");
+        return;
+      }
+
+      // 🔥 Build form data
+      const formData = new FormData();
+      formData.append("description", aboutForm.values.description.trim());
+
+      if (aboutForm.values.photoFile) {
+        formData.append("photo", aboutForm.values.photoFile);
+      }
+
+      const res = await aboutApi.update(formData);
+
+      // ✅ Sync UI with server response
       setAboutData(res.data.data);
 
       setShowEditModal(false);
@@ -105,7 +127,7 @@ export default function AboutPage() {
     } catch (err: any) {
       const errorData = err?.response?.data;
 
-      // 🔥 Validation errors
+      // 🔴 Validation errors
       if (errorData?.error?.fields) {
         const formatted: Record<string, string> = {};
 
@@ -117,7 +139,7 @@ export default function AboutPage() {
         return;
       }
 
-      // 🔥 Optional: NO_CHANGES
+      // 🔴 Backend no changes fallback
       if (errorData?.error?.code === "NO_CHANGES") {
         toast.info("No changes detected");
         return;
@@ -153,8 +175,10 @@ export default function AboutPage() {
   };
 
   if (loading) return <Loading />;
-  if (error) return <ErrorServer />;
-
+  if (error)
+    return (
+      <div className="text-center text-red-500">Failed to load about data.</div>
+    );
   return (
     <div className="min-h-screen bg-gray-50 p-10 space-y-8">
       <AboutCard

@@ -22,6 +22,7 @@ export const GET = withErrorHandler(
           motto: true,
           cvLink: true,
           cvFilename: true,
+          photo: true,
         },
       });
 
@@ -74,6 +75,7 @@ export const POST = withErrorHandler(
       const result = CreateProfileSchema.safeParse({
         motto: formData.get("motto"),
         cv: formData.get("cv"),
+        photo: formData.get("photo"),
       });
 
       if (!result.success) {
@@ -90,15 +92,23 @@ export const POST = withErrorHandler(
         );
       }
 
-      const { motto, cv } = result.data;
+      const { motto, cv, photo } = result.data;
 
-      const uploadedUrl = await uploadToCloudinary(cv, "cv_files");
+      // 📄 Upload CV
+      const cvUrl = await uploadToCloudinary(cv, "cv_files");
+
+      // 🖼 Upload Photo (optional)
+      let photoUrl: string | null = null;
+      if (photo && photo.size > 0) {
+        photoUrl = await uploadToCloudinary(photo, "profile_photos");
+      }
 
       const profile = await prisma.profile.create({
         data: {
           motto,
-          cvLink: uploadedUrl,
+          cvLink: cvUrl,
           cvFilename: cv.name,
+          photo: photoUrl, // ✅ FIELD BARU
         },
       });
 
@@ -149,15 +159,20 @@ export const PUT = withErrorHandler(
 
       const formData = await req.formData();
 
-      // Normalize file
+      // Normalize files
       const rawCv = formData.get("cv");
       const cv = rawCv instanceof File && rawCv.size > 0 ? rawCv : undefined;
+
+      const rawPhoto = formData.get("photo");
+      const photo =
+        rawPhoto instanceof File && rawPhoto.size > 0 ? rawPhoto : undefined;
 
       const mottoRaw = formData.get("motto");
 
       const result = UpdateProfileSchema.safeParse({
         motto: typeof mottoRaw === "string" ? mottoRaw : undefined,
         cv,
+        photo, // ✅ field baru
       });
 
       // 🔴 Validation Error
@@ -175,16 +190,17 @@ export const PUT = withErrorHandler(
         );
       }
 
-      const { motto, cv: validatedCv } = result.data;
+      const { motto, cv: validatedCv, photo: validatedPhoto } = result.data;
 
       // Check changes
       const isMottoChanged =
         typeof motto === "string" && existing.motto.trim() !== motto.trim();
 
       const isCvChanged = !!validatedCv;
+      const isPhotoChanged = !!validatedPhoto; // ✅ baru
 
       // 🔴 No Changes
-      if (!isMottoChanged && !isCvChanged) {
+      if (!isMottoChanged && !isCvChanged && !isPhotoChanged) {
         return NextResponse.json(
           {
             success: false,
@@ -200,8 +216,9 @@ export const PUT = withErrorHandler(
 
       let cvUrl = existing.cvLink;
       let cvFilename = existing.cvFilename;
+      let photoUrl = existing.photo; // ✅ baru
 
-      // Update file if new CV provided
+      // Update CV if new provided
       if (validatedCv) {
         const uploadedUrl = await updateCloudinaryFile(
           existing.cvLink ?? "",
@@ -213,12 +230,22 @@ export const PUT = withErrorHandler(
         cvFilename = validatedCv.name;
       }
 
+      // 🖼 Update Photo if new provided
+      if (validatedPhoto) {
+        photoUrl = await updateCloudinaryFile(
+          existing.photo ?? "",
+          validatedPhoto,
+          "profile_photos",
+        );
+      }
+
       const updated = await prisma.profile.update({
         where: { id: existing.id },
         data: {
           motto: isMottoChanged ? motto : existing.motto,
           cvLink: cvUrl,
           cvFilename: cvFilename,
+          photo: photoUrl, // ✅ field baru masuk DB
         },
       });
 
@@ -256,6 +283,7 @@ export const DELETE = withErrorHandler(
         select: {
           id: true,
           cvLink: true,
+          photo: true, // ✅ ambil field baru
         },
       });
 
@@ -273,12 +301,12 @@ export const DELETE = withErrorHandler(
         );
       }
 
-      // 🔴 Delete file from Cloudinary (if exists)
+      // 🔴 Delete CV from Cloudinary (if exists)
       if (existing.cvLink) {
         try {
           await deleteFromCloudinary(existing.cvLink);
         } catch (cloudErr) {
-          console.error("Cloudinary delete failed:", cloudErr);
+          console.error("Cloudinary CV delete failed:", cloudErr);
 
           return NextResponse.json(
             {
@@ -286,6 +314,27 @@ export const DELETE = withErrorHandler(
               error: {
                 code: "CLOUDINARY_DELETE_FAILED",
                 message: "Failed to delete the CV file from cloud storage.",
+              },
+            },
+            { status: 500 },
+          );
+        }
+      }
+
+      // 🖼 Delete Photo from Cloudinary (if exists) ✅ NEW
+      if (existing.photo) {
+        try {
+          await deleteFromCloudinary(existing.photo);
+        } catch (cloudErr) {
+          console.error("Cloudinary photo delete failed:", cloudErr);
+
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: "CLOUDINARY_DELETE_FAILED",
+                message:
+                  "Failed to delete the profile photo from cloud storage.",
               },
             },
             { status: 500 },

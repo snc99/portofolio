@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Loading from "@/components/custom-ui/Loading";
-import ErrorServer from "@/components/card/errorServer";
 import { toast } from "sonner";
 import SkillsCard from "@/components/custom-ui/skills/SkillsCard";
 import CreateSkillModal from "@/components/custom-ui/skills/CreateSkillModal";
@@ -14,6 +13,7 @@ interface SkillItem {
   id: string;
   name: string;
   photo?: string;
+  level: "JUNIOR" | "INTERMEDIATE" | "SENIOR" | "EXPERT";
   createdAt: string;
 }
 
@@ -58,6 +58,10 @@ export default function SkillPage() {
       const formData = new FormData();
       formData.append("name", skillCreateForm.values.name);
 
+      // ✅ kirim level enum
+      formData.append("level", skillCreateForm.values.level);
+
+      // ✅ kirim icon
       if (skillCreateForm.values.photo) {
         formData.append("photo", skillCreateForm.values.photo);
       }
@@ -99,6 +103,10 @@ export default function SkillPage() {
       const formData = new FormData();
       formData.append("name", skillEditForm.values.name);
 
+      // ✅ kirim level enum
+      formData.append("level", skillEditForm.values.level);
+
+      // ✅ kirim photo kalau ada
       if (skillEditForm.values.photo) {
         formData.append("photo", skillEditForm.values.photo);
       }
@@ -151,7 +159,10 @@ export default function SkillPage() {
   };
 
   if (loading) return <Loading />;
-  if (error) return <ErrorServer />;
+  if (error)
+    return (
+      <div className="w-full p-8 text-center">Failed to load skills data.</div>
+    );
 
   return (
     <div className="min-h-screen bg-gray-50">

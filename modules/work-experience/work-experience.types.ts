@@ -2,7 +2,8 @@ export interface WorkExperience {
   id: string;
   companyName: string;
   position: string;
-  startDate: string; // ISO string
+  location?: string;
+  startDate: string;
   endDate: string | null;
   isPresent: boolean;
   description: string | null;

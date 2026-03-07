@@ -6,6 +6,7 @@ export async function GET() {
     const about = await prisma.about.findFirst({
       select: {
         description: true,
+        photo: true,
       },
     });
 
@@ -16,9 +17,13 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({
-      description: about.description,
-    });
+    return NextResponse.json(
+      {
+        description: about.description,
+        photo: about.photo,
+      },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("PUBLIC ABOUT ERROR:", error);
 

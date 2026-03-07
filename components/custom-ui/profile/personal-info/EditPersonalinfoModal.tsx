@@ -17,11 +17,15 @@ interface EditPersonalModalProps {
   values: {
     motto: string;
     cv: File | null;
+    photoFile: File | null;
+    photoUrl: string | null;
   };
   setValues: React.Dispatch<
     React.SetStateAction<{
       motto: string;
       cv: File | null;
+      photoFile: File | null;
+      photoUrl: string | null;
     }>
   >;
   onSubmit: () => void;
@@ -29,6 +33,8 @@ interface EditPersonalModalProps {
   errors?: {
     motto?: string;
     cv?: string;
+    photoFile?: string;
+    photoUrl?: string;
   };
 }
 
@@ -81,6 +87,7 @@ export default function EditPersonalModal({
             <label className="text-sm font-medium">Replace CV (optional)</label>
             <Input
               type="file"
+              accept=".pdf,.doc,.docx"
               onChange={(e) =>
                 setValues((prev) => ({
                   ...prev,
@@ -91,6 +98,27 @@ export default function EditPersonalModal({
             />
             {errors.cv && (
               <p className="text-sm text-red-500 mt-1">{errors.cv}</p>
+            )}
+          </div>
+
+          {/* PHOTO */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Replace Profile Photo (optional)
+            </label>
+            <Input
+              type="file"
+              accept="image/png, image/jpeg, image/jpg"
+              onChange={(e) =>
+                setValues((prev) => ({
+                  ...prev,
+                  photo: e.target.files?.[0] || null,
+                }))
+              }
+              className={errors.photoFile ? "border-red-500" : ""}
+            />
+            {errors.photoFile && (
+              <p className="text-sm text-red-500 mt-1">{errors.photoFile}</p>
             )}
           </div>
 

@@ -17,6 +17,7 @@ export async function GET() {
         endDate: true,
         isPresent: true,
         description: true,
+        location: true,
       },
     });
 

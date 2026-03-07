@@ -6,6 +6,7 @@ export const workExperienceApi = {
   create: (data: {
     companyName: string;
     position: string;
+    location?: string;
     startDate: string;
     endDate?: string | null;
     isPresent: boolean;
@@ -17,6 +18,7 @@ export const workExperienceApi = {
     data: {
       companyName: string;
       position: string;
+      location?: string;
       startDate: string;
       endDate?: string | null;
       isPresent: boolean;

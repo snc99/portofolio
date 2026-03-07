@@ -13,6 +13,13 @@ datasource db {
   url  	    = env("DATABASE_URL")
 }
 
+enum SkillLevel {
+  JUNIOR
+  INTERMEDIATE
+  SENIOR
+  EXPERT
+}
+
 model Admin {
   id        String   @id @default(uuid()) @db.Uuid
   nama      String
@@ -27,6 +34,7 @@ model Profile {
   motto       String
   cvLink      String?  
   cvFilename  String?  
+  photo String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -43,18 +51,20 @@ model SocialMedia {
 model About {
   id          String   @id @default(uuid()) @db.Uuid
   description String
+  photo String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 model WorkExperience {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid()) @db.Uuid
   companyName String
   position    String
   startDate   DateTime
   endDate     DateTime?
   isPresent   Boolean  @default(false)
-  description String?  
+  description String?
+  location String?  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -63,6 +73,7 @@ model Skill {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
   photo     String
+  level     SkillLevel @default(JUNIOR)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

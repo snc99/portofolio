@@ -16,14 +16,16 @@ interface EditSkillModalProps {
   values: {
     name: string;
     photo: File | null;
+    level: "JUNIOR" | "INTERMEDIATE" | "SENIOR" | "EXPERT";
   };
   setValues: React.Dispatch<
     React.SetStateAction<{
       name: string;
       photo: File | null;
+      level: "JUNIOR" | "INTERMEDIATE" | "SENIOR" | "EXPERT";
     }>
   >;
-  fileRef: React.RefObject<HTMLInputElement | null>; // ✅ tambahin ini
+  fileRef: React.RefObject<HTMLInputElement | null>;
   onSubmit: () => void;
   isLoading?: boolean;
   errors?: {
@@ -75,15 +77,35 @@ export default function EditSkillModal({
             )}
           </div>
 
+          {/* Skill Level */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Skill Level</label>
+            <select
+              value={values.level}
+              onChange={(e) =>
+                setValues((prev) => ({
+                  ...prev,
+                  level: e.target.value as any,
+                }))
+              }
+              className="w-full h-10 px-3 rounded-md border border-gray-200 bg-white text-sm"
+            >
+              <option value="JUNIOR">Junior</option>
+              <option value="INTERMEDIATE">Intermediate</option>
+              <option value="SENIOR">Senior</option>
+              <option value="EXPERT">Expert</option>
+            </select>
+          </div>
+
           {/* Replace Icon */}
           <div className="space-y-2">
             <label className="text-sm font-medium">
               Replace Icon (optional)
             </label>
             <Input
-              ref={fileRef} // ✅ sekarang pakai ref
+              ref={fileRef}
               type="file"
-              accept="image/*"
+              accept="image/png, image/jpeg, image/jpg"
               onChange={(e) =>
                 setValues((prev) => ({
                   ...prev,

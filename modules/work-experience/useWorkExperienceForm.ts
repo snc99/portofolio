@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 type InitialData = {
   companyName?: string;
   position?: string;
+  location?: string;
   startDate?: string;
   endDate?: string | null;
   isPresent?: boolean;
@@ -20,6 +21,7 @@ export function useWorkExperienceForm(initialData?: InitialData) {
   const getInitialValues = () => ({
     companyName: initialData?.companyName || "",
     position: initialData?.position || "",
+    location: initialData?.location || "",
     startDate: normalizeDate(initialData?.startDate),
     endDate: normalizeDate(initialData?.endDate),
     isPresent: initialData?.isPresent || false,
@@ -40,6 +42,7 @@ export function useWorkExperienceForm(initialData?: InitialData) {
     setValues({
       companyName: "",
       position: "",
+      location: "",
       startDate: "",
       endDate: "",
       isPresent: false,

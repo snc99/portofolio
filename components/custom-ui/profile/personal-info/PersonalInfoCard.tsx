@@ -66,8 +66,16 @@ export default function PersonalInfoCard({
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-              <User className="h-5 w-5 text-emerald-500" />
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-emerald-50 flex items-center justify-center">
+              {data.photo ? (
+                <img
+                  src={data.photo}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="h-6 w-6 text-emerald-500" />
+              )}
             </div>
 
             <div>
@@ -118,7 +126,6 @@ export default function PersonalInfoCard({
               {data.motto || "—"}
             </div>
           </div>
-
           <div>
             <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
               CV

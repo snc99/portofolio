@@ -10,6 +10,7 @@ export interface Profile {
 export interface PersonalInfo {
   id: string;
   motto: string;
-  cvLink: string | null;
-  cvFilename: string | null;
+  cvLink?: string | null;
+  cvFilename?: string | null;
+  photo?: string | null;
 }

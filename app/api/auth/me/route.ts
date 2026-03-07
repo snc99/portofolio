@@ -4,16 +4,18 @@ import { userRepository } from "@/modules/user/user.repository";
 
 export async function GET() {
   try {
-    const user = await requireAuth();
+    // 🔐 Validasi token + session Redis
+    const authUser = await requireAuth();
 
-    const admin = await userRepository.findById(user.id);
+    // 🔎 Ambil data user dari DB
+    const user = await userRepository.findById(authUser.id);
 
-    if (!admin) {
+    if (!user) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "ADMIN_NOT_FOUND",
+            code: "USER_NOT_FOUND",
             message: "User not found",
           },
         },
@@ -21,19 +23,21 @@ export async function GET() {
       );
     }
 
+    // 🟢 Success
     return NextResponse.json(
       {
         success: true,
-        message: "Profile retrieved successfully",
+        message: "User authenticated",
         data: {
-          id: admin.id,
-          name: admin.nama,
-          email: admin.email,
+          id: user.id,
+          name: user.nama,
+          email: user.email,
         },
       },
       { status: 200 },
     );
-  } catch {
+  } catch (error) {
+    // 🔴 Token tidak ada / invalid / session mati
     return NextResponse.json(
       {
         success: false,

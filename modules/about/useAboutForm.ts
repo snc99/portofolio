@@ -2,11 +2,14 @@ import { useState, useEffect } from "react";
 
 type AboutInitialData = {
   description?: string;
+  photo?: string | null;
 };
 
 export function useAboutForm(initialData?: AboutInitialData) {
   const getInitialValues = () => ({
     description: initialData?.description || "",
+    photoFile: null as File | null,
+    photoUrl: initialData?.photo || null,
   });
 
   const [values, setValues] = useState(getInitialValues);
@@ -14,9 +17,7 @@ export function useAboutForm(initialData?: AboutInitialData) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setValues({
-      description: initialData?.description || "",
-    });
+    setValues(getInitialValues());
   }, [initialData]);
 
   const reset = () => {

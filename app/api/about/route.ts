@@ -1,4 +1,4 @@
-import { NextResponse, NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
 import {
   CreateAboutSchema,
@@ -6,6 +6,11 @@ import {
 } from "@/modules/about/about.schema";
 import { withAuth } from "@/shared/http/with-auth";
 import { withErrorHandler } from "@/shared/http/with-error-handler";
+import {
+  deleteFromCloudinary,
+  updateCloudinaryFile,
+  uploadToCloudinary,
+} from "@/infrastructure/storage/cloudinary";
 
 export const GET = withErrorHandler(
   withAuth(async () => {
@@ -13,6 +18,7 @@ export const GET = withErrorHandler(
       select: {
         id: true,
         description: true,
+        photo: true, // ✅ field baru
       },
     });
 
@@ -42,39 +48,6 @@ export const GET = withErrorHandler(
 
 export const POST = withErrorHandler(
   withAuth(async (req: Request) => {
-    let body: unknown;
-
-    try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "INVALID_JSON",
-            message: "Request body must be valid JSON",
-          },
-        },
-        { status: 400 },
-      );
-    }
-
-    const parsed = CreateAboutSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "VALIDATION_ERROR",
-            message: "Invalid input data",
-            fields: parsed.error.flatten().fieldErrors,
-          },
-        },
-        { status: 400 },
-      );
-    }
-
     const existing = await prisma.about.findFirst();
 
     if (existing) {
@@ -90,9 +63,40 @@ export const POST = withErrorHandler(
       );
     }
 
+    const formData = await req.formData();
+
+    const result = CreateAboutSchema.safeParse({
+      description: formData.get("description"),
+      photo: formData.get("photo"),
+    });
+
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid input data",
+            fields: result.error.flatten().fieldErrors,
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const { description, photo } = result.data;
+
+    let photoUrl: string | null = null;
+
+    // 🖼 Upload photo (optional)
+    if (photo && photo.size > 0) {
+      photoUrl = await uploadToCloudinary(photo, "about_photos");
+    }
+
     const about = await prisma.about.create({
       data: {
-        description: parsed.data.description,
+        description,
+        photo: photoUrl, // ✅ field baru
       },
     });
 
@@ -109,125 +113,219 @@ export const POST = withErrorHandler(
 
 export const PUT = withErrorHandler(
   withAuth(async (req: Request) => {
-    let body: unknown;
-
     try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "INVALID_JSON",
-            message: "Request body must be valid JSON",
+      const existing = await prisma.about.findFirst();
+
+      const formData = await req.formData();
+
+      // Normalize photo
+      const rawPhoto = formData.get("photo");
+      const photo =
+        rawPhoto instanceof File && rawPhoto.size > 0 ? rawPhoto : undefined;
+
+      const descriptionRaw = formData.get("description");
+
+      const parsed = UpdateAboutSchema.safeParse({
+        description:
+          typeof descriptionRaw === "string" ? descriptionRaw : undefined,
+        photo,
+      });
+
+      // 🔴 Validation error
+      if (!parsed.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "VALIDATION_ERROR",
+              message: "Invalid input data",
+              fields: parsed.error.flatten().fieldErrors,
+            },
           },
-        },
-        { status: 400 },
-      );
-    }
+          { status: 400 },
+        );
+      }
 
-    const parsed = UpdateAboutSchema.safeParse(body);
+      const { description, photo: validatedPhoto } = parsed.data;
+      const trimmedDescription = description?.trim();
 
-    // 🔴 Validation error
-    if (!parsed.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "VALIDATION_ERROR",
-            message: "Invalid input data",
-            fields: parsed.error.flatten().fieldErrors,
+      // 🟡 CASE 1 — Data belum ada → CREATE
+      if (!existing) {
+        if (!trimmedDescription) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: "DESCRIPTION_REQUIRED",
+                message: "Description is required to create About data",
+              },
+            },
+            { status: 400 },
+          );
+        }
+
+        let photoUrl: string | null = null;
+
+        if (validatedPhoto) {
+          photoUrl = await uploadToCloudinary(validatedPhoto, "about_photos");
+        }
+
+        const created = await prisma.about.create({
+          data: {
+            description: trimmedDescription,
+            photo: photoUrl,
           },
-        },
-        { status: 400 },
-      );
-    }
+        });
 
-    const existing = await prisma.about.findFirst();
+        return NextResponse.json(
+          {
+            success: true,
+            message: "About created successfully",
+            data: created,
+          },
+          { status: 201 },
+        );
+      }
 
-    const newDescription = parsed.data.description?.trim();
+      // Detect changes
+      const isDescriptionChanged =
+        typeof trimmedDescription === "string" &&
+        trimmedDescription !== existing.description;
 
-    // 🟢 If not exist → create (upsert-like behavior)
-    if (!existing) {
-      const created = await prisma.about.create({
+      const isPhotoChanged = !!validatedPhoto;
+
+      // 🔴 No changes
+      if (!isDescriptionChanged && !isPhotoChanged) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "NO_CHANGES",
+              message: "At least one change must be made",
+            },
+          },
+          { status: 400 },
+        );
+      }
+
+      let photoUrl = existing.photo;
+
+      // 🖼 Update photo if new provided
+      if (validatedPhoto) {
+        photoUrl = await updateCloudinaryFile(
+          existing.photo ?? "",
+          validatedPhoto,
+          "about_photos",
+        );
+      }
+
+      // 🟢 Update
+      const updated = await prisma.about.update({
+        where: { id: existing.id },
         data: {
-          description: newDescription!,
+          description: isDescriptionChanged
+            ? trimmedDescription
+            : existing.description,
+          photo: photoUrl,
         },
       });
 
       return NextResponse.json(
         {
           success: true,
-          message: "About created successfully",
-          data: created,
+          message: "About updated successfully",
+          data: updated,
         },
-        { status: 201 },
+        { status: 200 },
       );
-    }
+    } catch (error) {
+      console.error("PUT ABOUT ERROR:", error);
 
-    // 🔴 No changes
-    if (!newDescription || newDescription === existing.description) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "NO_CHANGES",
-            message: "At least one change must be made",
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to update About data",
           },
         },
-        { status: 400 },
+        { status: 500 },
       );
     }
-
-    // 🟢 Update
-    const updated = await prisma.about.update({
-      where: { id: existing.id },
-      data: {
-        description: newDescription,
-      },
-    });
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: "About updated successfully",
-        data: updated,
-      },
-      { status: 200 },
-    );
   }),
 );
 
 export const DELETE = withErrorHandler(
   withAuth(async () => {
-    const existing = await prisma.about.findFirst();
+    try {
+      const existing = await prisma.about.findFirst({
+        select: {
+          id: true,
+          photo: true, // ✅ ambil foto
+        },
+      });
 
-    // 🔴 Not found
-    if (!existing) {
+      // 🔴 Not found
+      if (!existing) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "ABOUT_NOT_FOUND",
+              message: "About data not found",
+            },
+          },
+          { status: 404 },
+        );
+      }
+
+      // 🖼 Delete photo from Cloudinary (if exists)
+      if (existing.photo) {
+        try {
+          await deleteFromCloudinary(existing.photo);
+        } catch (cloudErr) {
+          console.error("Cloudinary delete failed:", cloudErr);
+
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: "CLOUDINARY_DELETE_FAILED",
+                message: "Failed to delete photo from cloud storage",
+              },
+            },
+            { status: 500 },
+          );
+        }
+      }
+
+      // 🔥 Delete DB record
+      await prisma.about.delete({
+        where: { id: existing.id },
+      });
+
+      // 🟢 Success
+      return NextResponse.json(
+        {
+          success: true,
+          message: "About deleted successfully",
+          data: null,
+        },
+        { status: 200 },
+      );
+    } catch (error) {
+      console.error("DELETE ABOUT ERROR:", error);
+
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "ABOUT_NOT_FOUND",
-            message: "About data not found",
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to delete About data",
           },
         },
-        { status: 404 },
+        { status: 500 },
       );
     }
-
-    await prisma.about.delete({
-      where: { id: existing.id },
-    });
-
-    // 🟢 Success
-    return NextResponse.json(
-      {
-        success: true,
-        message: "About deleted successfully",
-        data: null,
-      },
-      { status: 200 },
-    );
   }),
 );

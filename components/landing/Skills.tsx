@@ -8,10 +8,25 @@ interface Skill {
   id: string;
   name: string;
   photo: string;
+  level: "JUNIOR" | "INTERMEDIATE" | "SENIOR" | "EXPERT";
 }
 
 export default function Skills({ data }: { data: Skill[] }) {
   const skills = data || [];
+
+  const levelMap: Record<string, number> = {
+    JUNIOR: 2,
+    INTERMEDIATE: 3,
+    SENIOR: 4,
+    EXPERT: 5,
+  };
+
+  const levelLabel: Record<string, string> = {
+    JUNIOR: "Junior",
+    INTERMEDIATE: "Intermediate",
+    SENIOR: "Senior",
+    EXPERT: "Expert",
+  };
 
   return (
     <section
@@ -93,18 +108,18 @@ export default function Skills({ data }: { data: Skill[] }) {
                       transform: "rotateY(180deg)",
                     }}
                   >
-                    <Sparkles size={32} className="mb-3" />
-                    <p className="text-sm text-center">
-                      {index % 2 === 0 ? "Expert" : "Advanced"}
+                    <Sparkles size={32} className="mb-3 text-emerald-600" />
+                    <p className="text-sm text-center text-emerald-600">
+                      {levelLabel[skill.level]}
                     </p>
                     <div className="flex gap-1 mt-3">
                       {[...Array(5)].map((_, i) => (
                         <div
                           key={i}
                           className={`w-2 h-2 rounded-full ${
-                            i < (index % 5) + 3
-                              ? "bg-white dark:bg-white"
-                              : "bg-white/30 dark:bg-white/30"
+                            i < levelMap[skill.level]
+                              ? "bg-emerald-600 dark:bg-emerald-400"
+                              : "bg-gray-400 dark:bg-white/30"
                           }`}
                         />
                       ))}

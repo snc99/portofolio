@@ -6,37 +6,57 @@ const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get("pw_token")?.value;
-  const { pathname } = request.nextUrl;
+  const { pathname, origin } = request.nextUrl;
 
   const isAuthPage = pathname.startsWith("/auth");
   const isDashboardPage = pathname.startsWith("/dashboard");
 
-  // 🔒 Kalau tidak login dan akses dashboard
-  if (!token && isDashboardPage) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
-  }
-
-  // 🔐 Kalau sudah login dan akses auth page
-  if (token && isAuthPage) {
-    try {
-      await jwtVerify(token, secret);
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    } catch {
-      return NextResponse.next();
+  // 🔒 Tidak ada token
+  if (!token) {
+    if (isDashboardPage) {
+      return redirectLogin(request);
     }
+    return NextResponse.next();
   }
 
-  // 🔍 Verify token untuk dashboard
-  if (token && isDashboardPage) {
-    try {
-      await jwtVerify(token, secret);
-      return NextResponse.next();
-    } catch {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
+  // 🔍 Verifikasi JWT
+  let payload: any;
+  try {
+    const verified = await jwtVerify(token, secret);
+    payload = verified.payload;
+  } catch {
+    return redirectLogin(request);
+  }
+
+  // 🔍 Cek Redis session aktif via internal API
+  try {
+    const res = await fetch(`${origin}/api/auth/session-check`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      return redirectLogin(request);
     }
+  } catch {
+    return redirectLogin(request);
   }
 
+  // 🚫 Sudah login tapi buka auth page
+  if (isAuthPage) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // ✅ Token valid & aktif
   return NextResponse.next();
+}
+
+function redirectLogin(request: NextRequest) {
+  const res = NextResponse.redirect(new URL("/auth/login", request.url));
+  res.cookies.set("pw_token", "", { maxAge: 0 });
+  return res;
 }
 
 export const config = {

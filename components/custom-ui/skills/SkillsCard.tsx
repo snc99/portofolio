@@ -10,7 +10,7 @@ import DeleteSkillModal from "./DeleteSkillModal";
 interface SkillItem {
   id: string;
   name: string;
-  level?: string;
+  level: "JUNIOR" | "INTERMEDIATE" | "SENIOR" | "EXPERT";
   createdAt: string;
 }
 

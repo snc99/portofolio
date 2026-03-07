@@ -14,6 +14,7 @@ interface SkillItem {
   id: string;
   name: string;
   photo?: string;
+  level: "JUNIOR" | "INTERMEDIATE" | "SENIOR" | "EXPERT";
   createdAt: string;
 }
 
@@ -24,13 +25,20 @@ interface SkillsTableProps {
 }
 
 const SkillsTable = ({ data, onDelete, onEdit }: SkillsTableProps) => {
+  const levelColors: Record<string, string> = {
+    JUNIOR: "bg-gray-100 text-gray-700",
+    INTERMEDIATE: "bg-blue-100 text-blue-700",
+    SENIOR: "bg-purple-100 text-purple-700",
+    EXPERT: "bg-emerald-100 text-emerald-700",
+  };
   return (
     <div className="w-full overflow-hidden rounded-xl border border-gray-100">
       <table className="w-full text-sm">
         <thead className="bg-gray-50 text-gray-500">
           <tr>
             <th className="px-4 py-3 text-left font-medium">Skill</th>
-            <th className="px-4 py-3 text-left font-medium">Icon</th>
+            <th className="px-4 py-3 text-center font-medium">Icon</th>
+            <th className="px-4 py-3 text-center font-medium">Level</th>
             <th className="px-4 py-3 text-right font-medium">Actions</th>
           </tr>
         </thead>
@@ -45,19 +53,29 @@ const SkillsTable = ({ data, onDelete, onEdit }: SkillsTableProps) => {
                 </td>
 
                 {/* Photo */}
-                <td className="px-4 py-3">
-                  {item.photo ? (
-                    <Image
-                      src={item.photo}
-                      alt={item.name}
-                      width={40}
-                      height={40}
-                      className="rounded-lg object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <span className="text-gray-400 text-xs">No Image</span>
-                  )}
+                <td className="px-4 py-3 text-center">
+                  <div className="flex justify-center items-center">
+                    {item.photo ? (
+                      <Image
+                        src={item.photo}
+                        alt={item.name}
+                        width={30}
+                        height={30}
+                        className="rounded-lg object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <span className="text-gray-400 text-xs">No Image</span>
+                    )}
+                  </div>
+                </td>
+
+                <td className="px-4 py-3 text-center">
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${levelColors[item.level]}`}
+                  >
+                    {item.level.charAt(0) + item.level.slice(1).toLowerCase()}
+                  </span>
                 </td>
 
                 {/* Actions */}
@@ -95,7 +113,7 @@ const SkillsTable = ({ data, onDelete, onEdit }: SkillsTableProps) => {
           ) : (
             <tr>
               <td
-                colSpan={3}
+                colSpan={4}
                 className="px-4 py-6 text-center text-gray-500 text-sm"
               >
                 No skills available

@@ -27,7 +27,14 @@ export const GET = withErrorHandler(
         include: {
           techStack: {
             include: {
-              skill: true,
+              skill: {
+                select: {
+                  id: true,
+                  name: true,
+                  photo: true,
+                  level: true, // ✅ enum ikut
+                },
+              },
             },
           },
         },
@@ -70,7 +77,6 @@ export const POST = withErrorHandler(
   withAuth(async (req: Request) => {
     const formData = await req.formData();
 
-    // ✅ Ambil semua skillIds (multiple entries)
     const skillIds = formData.getAll("skillIds") as string[];
 
     const validation = CreateProjectSchema.safeParse({
@@ -122,9 +128,11 @@ export const POST = withErrorHandler(
       );
     }
 
-    const imageUrl = projectImage
-      ? await uploadToCloudinary(projectImage, "projects")
-      : null;
+    // 🖼 Upload image (optional)
+    let imageUrl: string | null = null;
+    if (projectImage && projectImage.size > 0) {
+      imageUrl = await uploadToCloudinary(projectImage, "projects");
+    }
 
     const newProject = await prisma.project.create({
       data: {
@@ -141,17 +149,36 @@ export const POST = withErrorHandler(
       include: {
         techStack: {
           include: {
-            skill: true,
+            skill: {
+              select: {
+                id: true,
+                name: true,
+                photo: true,
+                level: true,
+              },
+            },
           },
         },
       },
     });
 
+    // 🔥 Samakan format dengan GET
+    const formattedProject = {
+      id: newProject.id,
+      title: newProject.title,
+      description: newProject.description,
+      link: newProject.link,
+      projectImage: newProject.projectImage,
+      createdAt: newProject.createdAt,
+      updatedAt: newProject.updatedAt,
+      skills: newProject.techStack.map((t) => t.skill),
+    };
+
     return NextResponse.json(
       {
         success: true,
         message: "Project created successfully",
-        data: newProject,
+        data: formattedProject,
       },
       { status: 201 },
     );

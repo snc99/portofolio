@@ -8,6 +8,8 @@ import Image from "next/image";
 interface ProfileData {
   motto: string | null;
   cvLink: string | null;
+  cvFilename: string | null;
+  photo: string | null;
 }
 
 export default function Profile({ data }: { data: ProfileData | null }) {
@@ -213,7 +215,7 @@ export default function Profile({ data }: { data: ProfileData | null }) {
           >
             <div className="w-full h-full rounded-full overflow-hidden shadow-2xl border-4 border-white dark:border-gray-700 relative z-10">
               <Image
-                src="/picture1.png"
+                src={data?.photo ?? "/profile1.svg"}
                 alt="Profile"
                 width={400}
                 height={400}

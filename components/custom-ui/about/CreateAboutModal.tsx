@@ -9,22 +9,28 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 interface CreateAboutModalProps {
   open: boolean;
   onClose: () => void;
   values: {
     description: string;
+    photoFile: File | null;
+    photoUrl: string | null;
   };
   setValues: React.Dispatch<
     React.SetStateAction<{
       description: string;
+      photoFile: File | null;
+      photoUrl: string | null;
     }>
   >;
   onSubmit: () => void;
   isLoading?: boolean;
   errors?: {
     description?: string;
+    photo?: string;
   };
 }
 
@@ -42,7 +48,9 @@ export default function CreateAboutModal({
       <DialogContent className="sm:max-w-lg rounded-2xl">
         <DialogHeader>
           <DialogTitle>Create About</DialogTitle>
-          <DialogDescription>Add your about description.</DialogDescription>
+          <DialogDescription>
+            Add your about description and optional photo.
+          </DialogDescription>
         </DialogHeader>
 
         <form
@@ -52,6 +60,7 @@ export default function CreateAboutModal({
           }}
           className="space-y-5 mt-4"
         >
+          {/* Description */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Description</label>
             <Textarea
@@ -66,6 +75,25 @@ export default function CreateAboutModal({
             />
             {errors.description && (
               <p className="text-sm text-red-500">{errors.description}</p>
+            )}
+          </div>
+
+          {/* Photo */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Photo (optional)</label>
+            <Input
+              type="file"
+              accept="image/png, image/jpeg, image/jpg"
+              onChange={(e) =>
+                setValues((prev) => ({
+                  ...prev,
+                  photoFile: e.target.files?.[0] || null,
+                }))
+              }
+              className={errors.photo ? "border-red-500" : ""}
+            />
+            {errors.photo && (
+              <p className="text-sm text-red-500">{errors.photo}</p>
             )}
           </div>
 

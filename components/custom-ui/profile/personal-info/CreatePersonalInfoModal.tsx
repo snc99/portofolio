@@ -19,6 +19,7 @@ interface CreatePersonalInfoModalProps {
   errors?: {
     motto?: string;
     cv?: string;
+    photo?: string;
   };
 }
 
@@ -46,6 +47,7 @@ export default function CreatePersonalInfoModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5 mt-4">
+          {/* MOTTO */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Motto</label>
             <Textarea
@@ -58,15 +60,31 @@ export default function CreatePersonalInfoModal({
             )}
           </div>
 
+          {/* CV */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Upload CV</label>
             <Input
               type="file"
               name="cv"
+              accept=".pdf,.doc,.docx"
               className={errors.cv ? "border-red-500" : ""}
             />
             {errors.cv && (
               <p className="text-sm text-red-500 mt-1">{errors.cv}</p>
+            )}
+          </div>
+
+          {/* PHOTO PROFIL */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Profile Photo</label>
+            <Input
+              type="file"
+              name="photo"
+              accept="image/png, image/jpeg, image/jpg"
+              className={errors.photo ? "border-red-500" : ""}
+            />
+            {errors.photo && (
+              <p className="text-sm text-red-500 mt-1">{errors.photo}</p>
             )}
           </div>
 

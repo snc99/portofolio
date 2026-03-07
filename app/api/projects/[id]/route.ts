@@ -17,10 +17,7 @@ export const PATCH = withErrorHandler(
       return NextResponse.json(
         {
           success: false,
-          error: {
-            code: "INVALID_ID",
-            message: "Invalid project ID",
-          },
+          error: { code: "INVALID_ID", message: "Invalid project ID" },
         },
         { status: 400 },
       );
@@ -37,10 +34,7 @@ export const PATCH = withErrorHandler(
       return NextResponse.json(
         {
           success: false,
-          error: {
-            code: "PROJECT_NOT_FOUND",
-            message: "Project not found",
-          },
+          error: { code: "PROJECT_NOT_FOUND", message: "Project not found" },
         },
         { status: 404 },
       );
@@ -48,7 +42,10 @@ export const PATCH = withErrorHandler(
 
     const formData = await req.formData();
 
-    // ✅ Parse skillIds from FormData (multiple entries)
+    const rawImage = formData.get("projectImage");
+    const projectImage =
+      rawImage instanceof File && rawImage.size > 0 ? rawImage : undefined;
+
     const skillIds = formData.getAll("skillIds") as string[];
     const parsedSkills = skillIds.length > 0 ? skillIds : undefined;
 
@@ -56,7 +53,7 @@ export const PATCH = withErrorHandler(
       title: formData.get("title"),
       description: formData.get("description"),
       link: formData.get("link"),
-      projectImage: formData.get("projectImage"),
+      projectImage,
       skillIds: parsedSkills,
     });
 
@@ -78,17 +75,15 @@ export const PATCH = withErrorHandler(
       title,
       description,
       link,
-      projectImage,
+      projectImage: validatedImage,
       skillIds: skills,
     } = validation.data;
 
-    // 🔥 Merge with existing
     const finalTitle = title ?? project.title;
     const finalDescription = description ?? project.description;
     const finalLink = link ?? project.link;
     const finalSkills = skills ?? project.techStack.map((s) => s.skillId);
 
-    // 🔥 Validate skills if changed
     if (skills) {
       const validSkills = await prisma.skill.findMany({
         where: { id: { in: finalSkills } },
@@ -109,20 +104,20 @@ export const PATCH = withErrorHandler(
       }
     }
 
-    // 🔥 Change detection
     const oldSkillIds = project.techStack.map((s) => s.skillId).sort();
-
     const newSkillIds = [...finalSkills].sort();
 
     const isSkillsChanged =
       oldSkillIds.length !== newSkillIds.length ||
-      oldSkillIds.some((id, index) => id !== newSkillIds[index]);
+      oldSkillIds.some((id, i) => id !== newSkillIds[i]);
+
+    const isImageChanged = !!validatedImage;
 
     const isChanged =
       finalTitle !== project.title ||
       finalDescription !== project.description ||
       finalLink !== project.link ||
-      !!projectImage ||
+      isImageChanged ||
       isSkillsChanged;
 
     if (!isChanged) {
@@ -140,8 +135,8 @@ export const PATCH = withErrorHandler(
 
     let imageUrl = project.projectImage;
 
-    if (projectImage) {
-      const uploadedUrl = await uploadToCloudinary(projectImage, "projects");
+    if (isImageChanged) {
+      const uploadedUrl = await uploadToCloudinary(validatedImage!, "projects");
 
       if (project.projectImage) {
         try {
@@ -171,11 +166,16 @@ export const PATCH = withErrorHandler(
           : undefined,
       },
       include: {
-        techStack: { include: { skill: true } },
+        techStack: {
+          include: {
+            skill: {
+              select: { id: true, name: true, photo: true, level: true },
+            },
+          },
+        },
       },
     });
 
-    // 🔥 Transform response biar konsisten dengan GET
     const formattedProject = {
       id: updatedProject.id,
       title: updatedProject.title,
@@ -192,15 +192,6 @@ export const PATCH = withErrorHandler(
         success: true,
         message: "Project updated successfully",
         data: formattedProject,
-      },
-      { status: 200 },
-    );
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Project updated successfully",
-        data: updatedProject,
       },
       { status: 200 },
     );
@@ -247,7 +238,12 @@ export const DELETE = withErrorHandler(
       );
     }
 
-    // 🔥 Hapus image dulu (optional safety approach)
+    // 🔥 Delete project first (relation cascade otomatis)
+    await prisma.project.delete({
+      where: { id },
+    });
+
+    // 🖼 Cloudinary cleanup (best effort)
     if (project.projectImage) {
       try {
         await deleteFromCloudinary(project.projectImage);
@@ -255,11 +251,6 @@ export const DELETE = withErrorHandler(
         console.error("Cloudinary delete error:", cloudinaryError);
       }
     }
-
-    // 🔥 Delete project (cascade relation otomatis)
-    await prisma.project.delete({
-      where: { id },
-    });
 
     return NextResponse.json(
       {

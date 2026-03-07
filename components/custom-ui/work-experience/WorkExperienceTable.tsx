@@ -15,6 +15,7 @@ interface WorkItem {
   id: string;
   companyName: string;
   position: string;
+  location?: string;
   startDate: string;
   endDate?: string | null;
   isPresent: boolean;
@@ -35,6 +36,7 @@ export default function WorkExperienceTable({ data, onDelete, onEdit }: Props) {
           <tr>
             <th className="px-4 py-3 text-left font-medium">Company</th>
             <th className="px-4 py-3 text-left font-medium">Position</th>
+            <th className="px-4 py-3 text-left font-medium">Location</th>
             <th className="px-4 py-3 text-left font-medium">Period</th>
             <th className="px-4 py-3 text-right font-medium">Actions</th>
           </tr>
@@ -49,6 +51,7 @@ export default function WorkExperienceTable({ data, onDelete, onEdit }: Props) {
                 </td>
 
                 <td className="px-4 py-3 text-gray-600">{item.position}</td>
+                <td className="px-4 py-3 text-gray-500">{item.location}</td>
 
                 <td className="px-4 py-3 text-gray-500">
                   <div className="flex flex-col">

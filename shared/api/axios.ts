@@ -9,11 +9,10 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      window.location.href = "/auth/login";
-
-      return new Promise(() => {});
+      if (typeof window !== "undefined") {
+        window.location.replace("/auth/login");
+      }
     }
-
     return Promise.reject(error);
   },
 );
@@ -22,3 +21,14 @@ export const fetcher = async <T>(promise: Promise<{ data: T }>): Promise<T> => {
   const response = await promise;
   return response.data;
 };
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      document.cookie = "pw_token=; Max-Age=0; path=/;";
+      window.location.replace("/auth/login");
+    }
+    return Promise.reject(error);
+  },
+);

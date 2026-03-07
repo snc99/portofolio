@@ -14,6 +14,7 @@ export async function GET() {
           include: {
             skill: {
               select: {
+                id: true,
                 name: true,
                 photo: true,
               },
@@ -29,10 +30,10 @@ export async function GET() {
       description: project.description,
       link: project.link,
       projectImage: project.projectImage,
-      techStack: project.techStack,
+      skills: project.techStack.map((t) => t.skill),
     }));
 
-    return NextResponse.json(formattedProjects);
+    return NextResponse.json(formattedProjects, { status: 200 });
   } catch (error) {
     console.error("PUBLIC PROJECTS ERROR:", error);
 

@@ -48,6 +48,7 @@ export const PATCH = withErrorHandler(
     const validation = UpdateSkillSchema.safeParse({
       name: formData.get("name"),
       photo: formData.get("photo"),
+      level: formData.get("level"), // ✅ enum baru
     });
 
     if (!validation.success) {
@@ -64,14 +65,19 @@ export const PATCH = withErrorHandler(
       );
     }
 
-    const { name, photo } = validation.data;
+    const { name, photo, level } = validation.data;
+
+    const trimmedName = typeof name === "string" ? name.trim() : undefined;
 
     const isNameChanged =
-      typeof name === "string" && name.trim() !== existing.name;
+      typeof trimmedName === "string" && trimmedName !== existing.name;
 
     const isPhotoChanged = photo instanceof File && photo.size > 0;
 
-    if (!isNameChanged && !isPhotoChanged) {
+    const isLevelChanged =
+      typeof level === "string" && level !== existing.level; // ✅ enum compare
+
+    if (!isNameChanged && !isPhotoChanged && !isLevelChanged) {
       return NextResponse.json(
         {
           success: false,
@@ -87,13 +93,14 @@ export const PATCH = withErrorHandler(
     const updateData: {
       name?: string;
       photo?: string;
+      level?: "JUNIOR" | "INTERMEDIATE" | "SENIOR" | "EXPERT";
     } = {};
 
     // 🔥 Duplicate check if name changed
     if (isNameChanged) {
       const duplicate = await prisma.skill.findFirst({
         where: {
-          name: { equals: name, mode: "insensitive" },
+          name: { equals: trimmedName, mode: "insensitive" },
           NOT: { id },
         },
       });
@@ -111,7 +118,7 @@ export const PATCH = withErrorHandler(
         );
       }
 
-      updateData.name = name!.trim();
+      updateData.name = trimmedName;
     }
 
     // 🔥 Photo update
@@ -127,6 +134,11 @@ export const PATCH = withErrorHandler(
       }
 
       updateData.photo = uploadedUrl;
+    }
+
+    // 🔥 Level update (enum)
+    if (isLevelChanged) {
+      updateData.level = level;
     }
 
     const updatedSkill = await prisma.skill.update({
@@ -166,7 +178,9 @@ export const DELETE = withErrorHandler(
     const skill = await prisma.skill.findUnique({
       where: { id },
       include: {
-        projects: true,
+        _count: {
+          select: { projects: true }, // ✅ lebih ringan dari include full
+        },
       },
     });
 
@@ -184,7 +198,7 @@ export const DELETE = withErrorHandler(
     }
 
     // 🔴 Prevent delete if still used in projects
-    if (skill.projects.length > 0) {
+    if (skill._count.projects > 0) {
       return NextResponse.json(
         {
           success: false,
@@ -202,7 +216,7 @@ export const DELETE = withErrorHandler(
       where: { id },
     });
 
-    // 🔥 Cloudinary cleanup (non-blocking failure)
+    // 🔥 Cloudinary cleanup (non-blocking)
     if (skill.photo) {
       try {
         await deleteFromCloudinary(skill.photo);

@@ -3,6 +3,7 @@ export interface ProfileData {
   motto: string;
   cvLink: string | null;
   cvFilename: string | null;
+  photo: string | null;
 }
 
 export interface AboutData {
@@ -11,6 +12,13 @@ export interface AboutData {
 }
 
 export interface SkillData {
+  id: string;
+  name: string;
+  photo: string;
+  level: "JUNIOR" | "INTERMEDIATE" | "SENIOR" | "EXPERT";
+}
+
+export interface SkillLite {
   id: string;
   name: string;
   photo: string;
@@ -24,6 +32,7 @@ export interface WorkExperienceData {
   endDate: string | null;
   isPresent: boolean;
   description: string | null;
+  location: string | null;
 }
 
 export interface SocialMediaData {
@@ -39,7 +48,7 @@ export interface ProjectData {
   description: string | null;
   link: string | null;
   projectImage: string | null;
-  skills: SkillData[];
+  skills: SkillLite[];
 }
 
 export interface HomeData {

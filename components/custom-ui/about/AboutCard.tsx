@@ -20,6 +20,7 @@ interface AboutCardProps {
   data: {
     id: string;
     description: string;
+    photo?: string | null;
   } | null;
   onRequestEdit: () => void;
   onRequestDelete: () => void;
@@ -68,8 +69,16 @@ export default function AboutCard({
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-              <User className="h-5 w-5 text-emerald-500" />
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-emerald-50 flex items-center justify-center">
+              {data.photo ? (
+                <img
+                  src={data.photo}
+                  alt="About"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="h-6 w-6 text-emerald-500" />
+              )}
             </div>
 
             <div>

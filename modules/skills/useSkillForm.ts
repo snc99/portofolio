@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 
+type SkillLevel = "JUNIOR" | "INTERMEDIATE" | "SENIOR" | "EXPERT";
+
 type SkillInitialData = {
   name?: string;
+  level?: SkillLevel;
 };
 
 export function useSkillForm(initialData?: SkillInitialData) {
@@ -9,6 +12,7 @@ export function useSkillForm(initialData?: SkillInitialData) {
 
   const getInitialValues = () => ({
     name: initialData?.name || "",
+    level: initialData?.level || "JUNIOR",
     photo: null as File | null,
   });
 
@@ -32,8 +36,10 @@ export function useSkillForm(initialData?: SkillInitialData) {
   const resetForCreate = () => {
     setValues({
       name: "",
+      level: "JUNIOR", // ✅ reset enum
       photo: null,
     });
+
     setErrors({});
     setLoading(false);
 

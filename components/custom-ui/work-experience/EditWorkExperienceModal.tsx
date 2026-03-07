@@ -15,6 +15,7 @@ import { MonthYearPicker } from "../MonthYearPicker";
 interface WorkFormValues {
   companyName: string;
   position: string;
+  location: string;
   startDate: string;
   endDate: string;
   isPresent: boolean;
@@ -113,6 +114,29 @@ export default function EditWorkExperienceModal({
               />
               {errors.position && (
                 <p className="text-xs text-red-500">{errors.position}</p>
+              )}
+            </div>
+
+            {/* Location */}
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-xs font-medium text-gray-600">
+                Location
+              </label>
+              <Input
+                placeholder="Jakarta, Indonesia"
+                className={`text-sm h-9 ${
+                  errors.location ? "border-red-500" : ""
+                }`}
+                value={values.location}
+                onChange={(e) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    location: e.target.value,
+                  }))
+                }
+              />
+              {errors.location && (
+                <p className="text-xs text-red-500">{errors.location}</p>
               )}
             </div>
 
