@@ -28,7 +28,6 @@ async function loginHandler(req: Request) {
     password?: string;
   };
 
-  // 🔴 Basic validation
   if (!email || !password) {
     return NextResponse.json(
       {
@@ -42,10 +41,8 @@ async function loginHandler(req: Request) {
     );
   }
 
-  // 🔐 Authenticate user
   const result = await authService.login({ email, password });
 
-  // 🔴 Invalid credentials
   if (!result) {
     return NextResponse.json(
       {
@@ -61,10 +58,8 @@ async function loginHandler(req: Request) {
 
   const { user, token } = result;
 
-  // ✅ Simpan session aktif ke Redis (single-device login)
   await sessionRepository.save(user.id, token, SESSION_DURATION);
 
-  // 🟢 Success response
   const response = NextResponse.json(
     {
       success: true,
@@ -78,7 +73,6 @@ async function loginHandler(req: Request) {
     { status: 200 },
   );
 
-  // 🍪 Set HttpOnly cookie
   response.cookies.set("pw_token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

@@ -15,6 +15,7 @@ import { useProfileForm } from "@/modules/profile/useProfileForm";
 import { useSocialMediaForm } from "@/modules/social-media/useSocialMediaForm";
 import { profileApi } from "@/modules/profile/profile.api";
 import { socialMediaApi } from "@/modules/social-media/social-media.api";
+import ErrorState from "@/components/dashboard/ErrorState";
 
 interface SocialMediaItem {
   id: string;
@@ -284,6 +285,14 @@ export default function ProfilePage() {
   };
 
   if (loading) return <Loading />;
+  if (error)
+    return (
+      <ErrorState
+        title="Failed to load projects"
+        message="There was a problem fetching project data."
+        onRetry={loadData}
+      />
+    );
 
   return (
     <div className="min-h-screen bg-gray-50">

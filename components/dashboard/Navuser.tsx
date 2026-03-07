@@ -101,7 +101,7 @@ export function NavUser({ user }: { user: User }) {
 
             <DropdownMenuItem
               onClick={handleLogout}
-              className="cursor-pointer text-red-600"
+              className="cursor-pointer text-red-600 hover:bg-red-100 hover:text-red-700 focus:bg-red-100 focus:text-red-700"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Log out

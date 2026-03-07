@@ -1,43 +1,32 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/infrastructure/security/auth";
-import { userRepository } from "@/modules/user/user.repository";
+import { sessionRepository } from "@/modules/auth/session.repository";
 
-export async function GET() {
+export async function POST() {
   try {
-    // 🔐 Validasi token + session Redis
-    const authUser = await requireAuth();
+    const user = await requireAuth();
 
-    // 🔎 Ambil data user dari DB
-    const user = await userRepository.findById(authUser.id);
+    await sessionRepository.delete(user.id);
 
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "USER_NOT_FOUND",
-            message: "User not found",
-          },
-        },
-        { status: 404 },
-      );
-    }
-
-    // 🟢 Success
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
-        message: "User authenticated",
-        data: {
-          id: user.id,
-          name: user.nama,
-          email: user.email,
-        },
+        message: "Logout successful",
+        data: null,
       },
       { status: 200 },
     );
-  } catch (error) {
-    // 🔴 Token tidak ada / invalid / session mati
+
+    response.cookies.set("pw_token", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+
+    return response;
+  } catch {
     return NextResponse.json(
       {
         success: false,

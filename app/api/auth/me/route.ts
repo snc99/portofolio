@@ -4,10 +4,8 @@ import { userRepository } from "@/modules/user/user.repository";
 
 export async function GET() {
   try {
-    // 🔐 Validasi token + session Redis
     const authUser = await requireAuth();
 
-    // 🔎 Ambil data user dari DB
     const user = await userRepository.findById(authUser.id);
 
     if (!user) {
@@ -23,7 +21,6 @@ export async function GET() {
       );
     }
 
-    // 🟢 Success
     return NextResponse.json(
       {
         success: true,
@@ -37,7 +34,6 @@ export async function GET() {
       { status: 200 },
     );
   } catch (error) {
-    // 🔴 Token tidak ada / invalid / session mati
     return NextResponse.json(
       {
         success: false,

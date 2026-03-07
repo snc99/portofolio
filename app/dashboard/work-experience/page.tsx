@@ -10,6 +10,7 @@ import DeleteWorkExperienceModal from "@/components/custom-ui/work-experience/De
 import { workExperienceApi } from "@/modules/work-experience/workExperience.api";
 import { useWorkExperienceForm } from "@/modules/work-experience/useWorkExperienceForm";
 import { mapZodErrors } from "@/shared/utils/mapZodErrors";
+import ErrorState from "@/components/dashboard/ErrorState";
 
 interface WorkItem {
   id: string;
@@ -157,9 +158,11 @@ export default function WorkExperiencePage() {
   if (loading) return <Loading />;
   if (error)
     return (
-      <div className="p-4 bg-red-100 text-red-700 rounded">
-        Failed to load data
-      </div>
+      <ErrorState
+        title="Failed to load projects"
+        message="There was a problem fetching project data."
+        onRetry={loadData}
+      />
     );
 
   return (

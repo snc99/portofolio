@@ -8,6 +8,7 @@ import CreateSkillModal from "@/components/custom-ui/skills/CreateSkillModal";
 import EditSkillModal from "@/components/custom-ui/skills/EditSkillModal";
 import { skillApi } from "@/modules/skills/skill-api";
 import { useSkillForm } from "@/modules/skills/useSkillForm";
+import ErrorState from "@/components/dashboard/ErrorState";
 
 interface SkillItem {
   id: string;
@@ -161,7 +162,11 @@ export default function SkillPage() {
   if (loading) return <Loading />;
   if (error)
     return (
-      <div className="w-full p-8 text-center">Failed to load skills data.</div>
+      <ErrorState
+        title="Failed to load projects"
+        message="There was a problem fetching project data."
+        onRetry={loadData}
+      />
     );
 
   return (

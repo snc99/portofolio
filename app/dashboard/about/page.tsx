@@ -9,6 +9,7 @@ import { useAboutForm } from "@/modules/about/useAboutForm";
 import EditAboutModal from "@/components/custom-ui/about/EditAboutModal";
 import CreateAboutModal from "@/components/custom-ui/about/CreateAboutModal";
 import DeleteAboutModal from "@/components/custom-ui/about/DeleteAboutModal";
+import ErrorState from "@/components/dashboard/ErrorState";
 
 export default function AboutPage() {
   const [aboutData, setAboutData] = useState<{
@@ -177,8 +178,13 @@ export default function AboutPage() {
   if (loading) return <Loading />;
   if (error)
     return (
-      <div className="text-center text-red-500">Failed to load about data.</div>
+      <ErrorState
+        title="Failed to load projects"
+        message="There was a problem fetching project data."
+        onRetry={loadData}
+      />
     );
+
   return (
     <div className="min-h-screen bg-gray-50 p-10 space-y-8">
       <AboutCard

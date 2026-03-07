@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@/shared/utils/utils";
 
 function Skeleton({

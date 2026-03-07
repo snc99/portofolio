@@ -42,7 +42,6 @@ export const LoginForm = () => {
 
     try {
       const res = await authService.login(form);
-      console.log(res);
 
       if (res.success) {
         router.replace("/dashboard");

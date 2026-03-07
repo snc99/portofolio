@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 
 type ProjectInitialData = {
   title?: string;
@@ -10,29 +10,40 @@ type ProjectInitialData = {
 export function useProjectForm(initialData?: ProjectInitialData) {
   const isEditMode = !!initialData;
 
-  const getInitialValues = () => ({
-    title: initialData?.title || "",
-    description: initialData?.description || "",
-    link: initialData?.link || "",
-    projectImage: null as File | null,
-    skillIds: initialData?.skillIds || ([] as string[]),
-  });
+  // ✅ Memo biar gak bikin object baru tiap render
+  const initialValues = useMemo(
+    () => ({
+      title: initialData?.title ?? "",
+      description: initialData?.description ?? "",
+      link: initialData?.link ?? "",
+      projectImage: null as File | null,
+      skillIds: initialData?.skillIds ?? ([] as string[]),
+    }),
+    [
+      initialData?.title,
+      initialData?.description,
+      initialData?.link,
+      initialData?.skillIds,
+    ],
+  );
 
-  const [values, setValues] = useState(getInitialValues);
+  const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Sync kalau edit item berubah
+  // ✅ Sync hanya kalau data edit benar-benar berubah
   useEffect(() => {
     if (isEditMode) {
-      setValues(getInitialValues());
+      setValues(initialValues);
     }
-  }, [initialData]);
+  }, [isEditMode, initialValues]);
 
-  const clearErrors = () => {
-    setErrors({});
+  const clearErrors = () => setErrors({});
+
+  const clearFileInput = () => {
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   const resetForCreate = () => {
@@ -43,32 +54,19 @@ export function useProjectForm(initialData?: ProjectInitialData) {
       projectImage: null,
       skillIds: [],
     });
-
     setErrors({});
     setLoading(false);
-
-    if (fileRef.current) {
-      fileRef.current.value = "";
-    }
+    clearFileInput();
   };
 
   const resetToInitial = () => {
-    setValues(getInitialValues());
+    setValues(initialValues);
     setErrors({});
     setLoading(false);
-
-    if (fileRef.current) {
-      fileRef.current.value = "";
-    }
+    clearFileInput();
   };
 
-  const reset = () => {
-    if (isEditMode) {
-      resetToInitial();
-    } else {
-      resetForCreate();
-    }
-  };
+  const reset = () => (isEditMode ? resetToInitial() : resetForCreate());
 
   return {
     values,

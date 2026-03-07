@@ -32,7 +32,6 @@ export const GET = withErrorHandler(
                   id: true,
                   name: true,
                   photo: true,
-                  level: true, // ✅ enum ikut
                 },
               },
             },
@@ -154,7 +153,6 @@ export const POST = withErrorHandler(
                 id: true,
                 name: true,
                 photo: true,
-                level: true,
               },
             },
           },

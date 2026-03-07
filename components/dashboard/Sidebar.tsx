@@ -31,13 +31,34 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { state } = useSidebar();
 
-  const user = {
-    name: "Admin",
-    email: "admin@local",
-    avatar: "/avatar.png",
-  };
+  const [user, setUser] = useState<{
+    name: string;
+    email: string;
+    avatar?: string;
+  } | null>(null);
 
-  const loading = false;
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await authService.me();
+        if (res.success) {
+          setUser({
+            name: res.data.name || "Irvan Sandy",
+            email: res.data.email,
+            avatar: "/profile1.svg",
+          });
+        }
+      } catch {
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   const data = {
     navMain: [
@@ -72,10 +93,10 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         isActive: pathname === "/dashboard/work-experience",
       },
       {
-        title: "Project",
-        url: "/dashboard/project",
+        title: "Projects",
+        url: "/dashboard/projects",
         icon: Layers,
-        isActive: pathname === "/dashboard/project",
+        isActive: pathname === "/dashboard/projects",
       },
     ],
   };
