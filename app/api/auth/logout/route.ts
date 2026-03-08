@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/infrastructure/security/auth";
 import { sessionRepository } from "@/modules/auth/session.repository";
