@@ -14,9 +14,9 @@ export interface AuthUser {
 
 export const authService = {
   login: (data: LoginInput) =>
-    fetcher<ApiResponse<AuthUser>>(api.post("/auth/login", data)),
+    fetcher<ApiResponse<AuthUser>>(api.post("/api/auth/login", data)),
 
-  logout: () => fetcher<ApiResponse<null>>(api.post("/auth/logout")),
+  logout: () => fetcher<ApiResponse<null>>(api.post("/api/auth/logout")),
 
-  me: () => fetcher<ApiResponse<AuthUser>>(api.get("/auth/me")),
+  me: () => fetcher<ApiResponse<AuthUser>>(api.get("/api/auth/me")),
 };
