@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { ApiResponse } from "@/shared/response/api-response.util";
 import { LRUCache } from "lru-cache";
 
-const FREEZE_DURATION = 1000 * 10;
-// 1000 * 60 * 30; // 30 menit
+const FREEZE_DURATION = 1000 * 60 * 30; // 30 menit
 
 const cache = new LRUCache<string, number>({
   max: 500,
@@ -29,10 +28,10 @@ export function withRateLimit<T extends AppRouteContext = AppRouteContext>(
 
       // kondisi pertama kali freeze
       if (count === limit) {
-        cache.set(ip, count + 1); // naikin supaya masuk kondisi ke-2 berikutnya
+        cache.set(ip, count + 1);
 
         return NextResponse.json(
-          ApiResponse.error("Anda di-freeze selama 30 menit", 429),
+          ApiResponse.error("Anda di-freeze selama 30 menit", "RATE_LIMIT"),
           { status: 429 },
         );
       }
@@ -41,7 +40,7 @@ export function withRateLimit<T extends AppRouteContext = AppRouteContext>(
       return NextResponse.json(
         ApiResponse.error(
           `Anda masih dalam freeze, sisa ${remainingMinutes} menit`,
-          429,
+          "RATE_LIMIT",
         ),
         { status: 429 },
       );
