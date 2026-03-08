@@ -46,9 +46,12 @@ export const LoginForm = () => {
       if (res.success) {
         router.replace("/dashboard");
       }
-    } catch (err) {
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.error?.message || err?.message || "Login gagal";
+
       setErrors({
-        general: err instanceof Error ? err.message : "Login failed",
+        general: message,
       });
     }
 

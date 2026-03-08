@@ -31,7 +31,10 @@ export function withRateLimit<T extends AppRouteContext = AppRouteContext>(
         cache.set(ip, count + 1);
 
         return NextResponse.json(
-          ApiResponse.error("Anda di-freeze selama 30 menit", "RATE_LIMIT"),
+          ApiResponse.error(
+            "You have been temporarily locked out for 30 minutes.",
+            "RATE_LIMIT",
+          ),
           { status: 429 },
         );
       }
@@ -39,7 +42,7 @@ export function withRateLimit<T extends AppRouteContext = AppRouteContext>(
       // kondisi sudah dalam freeze
       return NextResponse.json(
         ApiResponse.error(
-          `Anda masih dalam freeze, sisa ${remainingMinutes} menit`,
+          `You are still temporarily locked out. ${remainingMinutes} minutes remaining.`,
           "RATE_LIMIT",
         ),
         { status: 429 },

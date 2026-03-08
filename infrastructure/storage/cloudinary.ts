@@ -1,18 +1,40 @@
 import { v2 as cloudinary } from "cloudinary";
 
+// Validate environment variables
+const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } =
+  process.env;
+
+if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+  throw new Error(
+    "Cloudinary environment variables are not configured properly.",
+  );
+}
+
+// Configure Cloudinary
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: CLOUDINARY_CLOUD_NAME,
+  api_key: CLOUDINARY_API_KEY,
+  api_secret: CLOUDINARY_API_SECRET,
 });
 
 /**
- * Upload file ke Cloudinary
- * @param {File} file - File yang akan diupload
- * @param {string} folder - Nama folder di Cloudinary (opsional)
- * @returns {Promise<string>} URL file yang sudah diupload
+ * Generate safe public ID from filename
  */
+function generatePublicId(filename: string) {
+  const baseName = filename.split(".")[0];
+  return baseName
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
+/**
+ * Upload file to Cloudinary
+ * @param file File to upload
+ * @param folder Optional folder name
+ * @returns Uploaded file secure URL
+ */
 export async function uploadToCloudinary(
   file: File,
   folder?: string,
@@ -20,80 +42,77 @@ export async function uploadToCloudinary(
   try {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    const publicId = generatePublicId(file.name);
 
     return new Promise<string>((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
+      const stream = cloudinary.uploader.upload_stream(
         {
           resource_type: "auto",
           folder: folder || undefined,
-          public_id: file.name.split(".")[0],
+          public_id: publicId,
+          overwrite: true,
         },
         (error, result) => {
           if (error) {
-            reject(new Error(`Upload gagal: ${error.message}`));
+            reject(new Error(`Cloudinary upload failed: ${error.message}`));
+          } else if (!result?.secure_url) {
+            reject(new Error("Upload failed: No secure URL returned"));
           } else {
-            resolve(result?.secure_url || "");
+            resolve(result.secure_url);
           }
         },
       );
-      uploadStream.end(buffer);
+
+      stream.end(buffer);
     });
-  } catch (error) {
-    throw new Error(`Terjadi kesalahan saat mengupload file: ${error}`);
+  } catch (error: any) {
+    throw new Error(`Upload error: ${error.message}`);
   }
 }
 
 /**
- * Hapus file dari Cloudinary
- * @param {string} url - URL file yang ingin dihapus
- * @returns {Promise<any>} Response dari Cloudinary
+ * Delete file from Cloudinary using its URL
+ * @param url File URL
  */
 export async function deleteFromCloudinary(url: string) {
   try {
-    if (!url) {
-      throw new Error("URL tidak valid");
-    }
+    if (!url) throw new Error("Invalid Cloudinary URL");
 
-    // Ambil bagian setelah /upload/
-    const uploadSplit = url.split("/upload/");
+    const parts = url.split("/upload/");
+    if (parts.length < 2) throw new Error("Malformed Cloudinary URL");
 
-    if (uploadSplit.length < 2) {
-      throw new Error("Format URL Cloudinary tidak valid");
-    }
-
-    let publicIdWithVersion = uploadSplit[1];
-
-    // Hapus versi (v1234567890)
-    publicIdWithVersion = publicIdWithVersion.replace(/^v\d+\//, "");
-
-    // Hapus ekstensi file (.pdf, .jpg, dll)
-    const publicId = publicIdWithVersion.replace(/\.[^/.]+$/, "");
+    let publicId = parts[1]
+      .replace(/^v\d+\//, "") // remove version
+      .replace(/\.[^/.]+$/, ""); // remove extension
 
     const result = await cloudinary.uploader.destroy(publicId);
 
+    if (result.result !== "ok" && result.result !== "not found") {
+      throw new Error("Failed to delete file from Cloudinary");
+    }
+
     return result;
-  } catch (error) {
-    console.error("Gagal menghapus file dari Cloudinary:", error);
-    throw error;
+  } catch (error: any) {
+    throw new Error(`Cloudinary delete error: ${error.message}`);
   }
 }
 
 /**
- * Update file di Cloudinary (hapus file lama, lalu upload baru)
- * @param {string} oldUrl - URL file lama yang ingin dihapus
- * @param {File} newFile - File baru yang akan diupload
- * @param {string} folder - Folder tempat file tersimpan (opsional)
- * @returns {Promise<string>} URL file yang baru diupload
+ * Replace existing file with a new one
+ * @param oldUrl Existing file URL
+ * @param newFile New file to upload
+ * @param folder Optional folder
+ * @returns New uploaded file URL
  */
 export async function updateCloudinaryFile(
   oldUrl: string,
   newFile: File,
   folder?: string,
-) {
+): Promise<string> {
   try {
-    await deleteFromCloudinary(oldUrl);
+    if (oldUrl) await deleteFromCloudinary(oldUrl);
     return await uploadToCloudinary(newFile, folder);
-  } catch (error) {
-    throw new Error(`Gagal memperbarui file di Cloudinary: ${error}`);
+  } catch (error: any) {
+    throw new Error(`Cloudinary update failed: ${error.message}`);
   }
 }
