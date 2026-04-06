@@ -11,6 +11,8 @@ import WorkExperience from "../components/landing/WorkExperience";
 import { getHomeData } from "@/modules/landing/landing.service";
 import LandingLayout from "./landing-layout";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const data = await getHomeData();
 
