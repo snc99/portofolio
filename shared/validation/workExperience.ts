@@ -29,7 +29,7 @@ const BaseWorkExperienceSchema = z.object({
     .trim()
     .min(2, "Location must be at least 2 characters")
     .max(100, "Location must be at most 100 characters")
-    .optional(), // ✅ sinkron DB
+    .optional(),
 
   startDate: DateStringSchema,
 
@@ -43,8 +43,8 @@ const BaseWorkExperienceSchema = z.object({
     .string()
     .trim()
     .min(3, "Description must be at least 3 characters")
-    .max(500, "Description must be at most 500 characters")
-    .optional(), // ✅ sinkron DB
+    .max(200, "Description must be at most 200 characters")
+    .optional(),
 });
 
 /* ================= CREATE ================= */

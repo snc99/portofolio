@@ -11,7 +11,14 @@ const Navbar = () => {
 
   // Handle active section based on scroll position
   useEffect(() => {
-    const sections = ["home", "about", "skills", "work", "projects", "contact"];
+    const sections = [
+      "home",
+      "about",
+      "skills",
+      "work-experience",
+      "projects",
+      "contact",
+    ];
 
     const handleScroll = () => {
       // Handle navbar background
@@ -46,7 +53,7 @@ const Navbar = () => {
     { name: "Home", id: "home" },
     { name: "About", id: "about" },
     { name: "Skills", id: "skills" },
-    { name: "Work", id: "work" },
+    { name: "Work Experience", id: "work-experience" },
     { name: "Projects", id: "projects" },
     { name: "Contact", id: "contact" },
   ];

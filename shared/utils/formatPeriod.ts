@@ -1,8 +1,8 @@
 import { format } from "date-fns";
 
 export function formatWorkPeriod(
-  startDate: string,
-  endDate?: string | null,
+  startDate: Date | string,
+  endDate?: Date | string | null,
   isPresent?: boolean,
 ) {
   if (!startDate) return "-";

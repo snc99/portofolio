@@ -1,27 +1,29 @@
-import { prisma } from "@/infrastructure/database/prisma";
-import { NextResponse } from "next/server";
+import { getSkills } from "@/modules/landing/skills/skill.service";
+import { ApiResponse } from "@/shared/response/api-response.util";
 
-export async function GET() {
+export const revalidate = 3600;
+
+export async function GET(req: Request) {
   try {
-    const skills = await prisma.skill.findMany({
-      select: {
-        id: true,
-        name: true,
-        photo: true,
-        level: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const { searchParams } = new URL(req.url);
 
-    return NextResponse.json(skills);
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = 5;
+
+    const skills = await getSkills(page, limit);
+
+    if (!skills.data.length) {
+      return ApiResponse.error("Skill data not found", "SKILL_NOT_FOUND", 404);
+    }
+
+    return ApiResponse.success(skills, "Skill data retrieved successfully");
   } catch (error) {
-    console.error("PUBLIC SKILLS ERROR:", error);
+    console.error(error);
 
-    return NextResponse.json(
-      { message: "Failed to fetch skills" },
-      { status: 500 },
+    return ApiResponse.error(
+      "Failed to fetch skill data",
+      "INTERNAL_SERVER_ERROR",
+      500,
     );
   }
 }

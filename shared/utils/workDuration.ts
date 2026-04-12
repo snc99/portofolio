@@ -1,6 +1,6 @@
 export function calculateWorkDuration(
-  startDate: string,
-  endDate?: string | null,
+  startDate: Date | string,
+  endDate?: Date | string | null,
   isPresent?: boolean,
 ): string {
   if (!startDate) return "";
@@ -18,7 +18,6 @@ export function calculateWorkDuration(
     months += 12;
   }
 
-  // kalau masih negatif berarti invalid range
   if (years < 0 || (years === 0 && months < 0)) return "";
 
   const parts: string[] = [];

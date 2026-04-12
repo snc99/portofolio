@@ -1,35 +1,24 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/infrastructure/database/prisma";
+import { getAbout } from "@/modules/landing/about/about.service";
+import { ApiResponse } from "@/shared/response/api-response.util";
+
+export const revalidate = 3600;
 
 export async function GET() {
   try {
-    const about = await prisma.about.findFirst({
-      select: {
-        description: true,
-        photo: true,
-      },
-    });
+    const about = await getAbout();
 
     if (!about) {
-      return NextResponse.json(
-        { message: "About content not found" },
-        { status: 404 },
-      );
+      return ApiResponse.error("About data not found", "ABOUT_NOT_FOUND", 404);
     }
 
-    return NextResponse.json(
-      {
-        description: about.description,
-        photo: about.photo,
-      },
-      { status: 200 },
-    );
+    return ApiResponse.success(about, "About data retrieved successfully");
   } catch (error) {
-    console.error("PUBLIC ABOUT ERROR:", error);
+    console.error(error);
 
-    return NextResponse.json(
-      { message: "Failed to fetch about data" },
-      { status: 500 },
+    return ApiResponse.error(
+      "Failed to fetch about data",
+      "INTERNAL_SERVER_ERROR",
+      500,
     );
   }
 }

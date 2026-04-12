@@ -1,19 +1,24 @@
 "use client";
 
-import { motion, Variants, useInView } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import {
   Briefcase,
   Calendar,
   MapPin,
   Building2,
-  Clock,
-  Award,
+  ChevronRight,
+  ChevronLeft,
+  Star,
   Sparkles,
+  Clock,
+  TrendingUp,
+  Award,
 } from "lucide-react";
 import { formatWorkPeriod } from "@/shared/utils/formatPeriod";
 import { calculateWorkDuration } from "@/shared/utils/workDuration";
 import { useRef, useState, useEffect } from "react";
-import { WorkExperienceData } from "@/modules/landing/landing.types";
+import { WorkExperienceData } from "@/modules/landing/work-experience/work-experience.type";
+import useEmblaCarousel from "embla-carousel-react";
 
 export default function WorkExperience({
   data,
@@ -21,373 +26,302 @@ export default function WorkExperience({
   data: WorkExperienceData[];
 }) {
   const experiences = data || [];
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
   const sectionRef = useRef(null);
   const isInView = useInView(sectionRef, { once: true, amount: 0.1 });
+  const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    loop: false,
+    align: "start",
+    watchDrag: false,
+    dragFree: false,
+    containScroll: "trimSnaps",
+  });
+
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
+
+  const scrollPrev = () => emblaApi?.scrollPrev();
+  const scrollNext = () => emblaApi?.scrollNext();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Calculate total experience
-  const totalYears = experiences.reduce((acc, exp) => {
-    const start = new Date(exp.startDate);
-    const end = exp.isPresent ? new Date() : new Date(exp.endDate!);
-    const years =
-      (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365);
-    return acc + years;
-  }, 0);
+  useEffect(() => {
+    if (!emblaApi) return;
+
+    const update = () => {
+      setCanScrollPrev(emblaApi.canScrollPrev());
+      setCanScrollNext(emblaApi.canScrollNext());
+      setSelectedIndex(emblaApi.selectedScrollSnap());
+      setScrollSnaps(emblaApi.scrollSnapList());
+    };
+
+    update();
+    emblaApi.on("select", update);
+    emblaApi.on("reInit", update);
+
+    return () => {
+      emblaApi.off("select", update);
+    };
+  }, [emblaApi]);
+
+  const truncateText = (text: string, max = 120) => {
+    if (!text) return "No description available";
+    if (text.length <= max) return text;
+    return text.slice(0, max) + "...";
+  };
 
   return (
     <section
       ref={sectionRef}
-      id="work"
-      className="relative bg-gradient-to-b from-white to-pastel-light dark:from-gray-900 dark:to-dark-light py-20 px-4 sm:px-6 lg:px-8 overflow-hidden"
+      id="work-experience"
+      className="relative bg-gradient-to-br from-slate-50 via-white to-gray-50 dark:from-gray-900 dark:via-slate-900 dark:to-gray-900 py-20 px-4 sm:px-6 lg:px-8"
     >
-      {/* Animated Background */}
-      <div className="absolute inset-0 pointer-events-none">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <motion.div
-          className="absolute top-20 left-20 w-64 h-64 bg-pastel-green/10 dark:bg-dark-green/10 rounded-full blur-3xl"
+          className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-r from-emerald-200/20 to-teal-200/20 dark:from-emerald-500/10 dark:to-teal-500/10 rounded-full blur-3xl"
           animate={{
-            x: [0, 30, 0],
+            x: [0, 50, 0],
             y: [0, -30, 0],
             scale: [1, 1.2, 1],
           }}
-          transition={{ duration: 8, repeat: Infinity }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div
-          className="absolute bottom-20 right-20 w-80 h-80 bg-pastel-soft/10 dark:bg-dark-soft/10 rounded-full blur-3xl"
+          className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-r from-blue-200/20 to-purple-200/20 dark:from-blue-500/10 dark:to-purple-500/10 rounded-full blur-3xl"
           animate={{
-            x: [0, -40, 0],
-            y: [0, 40, 0],
+            x: [0, -60, 0],
+            y: [0, 50, 0],
             scale: [1, 1.3, 1],
+          }}
+          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-r from-amber-200/10 to-rose-200/10 dark:from-amber-500/5 dark:to-rose-500/5 rounded-full blur-3xl"
+          animate={{
+            scale: [1, 1.1, 1],
+            opacity: [0.3, 0.5, 0.3],
           }}
           transition={{ duration: 10, repeat: Infinity }}
         />
 
-        {/* Floating particles */}
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]" />
+
+        {/* Floating Particles */}
         {mounted &&
-          [...Array(6)].map((_, i) => (
+          [...Array(8)].map((_, i) => (
             <motion.div
               key={i}
-              className="absolute w-1 h-1 bg-pastel-green/30 dark:bg-dark-green/30 rounded-full"
+              className="absolute w-1 h-1 rounded-full"
               style={{
-                left: `${(i * 20) % 100}%`,
-                top: `${(i * 15) % 100}%`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                background: `linear-gradient(135deg, ${
+                  ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b"][i % 4]
+                }, transparent)`,
               }}
               animate={{
-                y: [0, -30, 0],
+                y: [0, -40, 0],
+                x: [0, Math.sin(i) * 25, 0],
                 opacity: [0, 0.5, 0],
+                scale: [0, 1.2, 0],
               }}
               transition={{
                 duration: 3 + (i % 3),
                 repeat: Infinity,
-                delay: i * 0.3,
+                delay: i * 0.4,
+                ease: "easeInOut",
               }}
             />
           ))}
       </div>
 
-      <div className="max-w-5xl mx-auto relative z-10">
-        {/* Header with animation */}
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Header Section */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.8, type: "spring" }}
           className="text-center mb-16"
         >
           <motion.div
-            className="inline-flex items-center justify-center p-3 bg-pastel-green dark:bg-dark-soft rounded-full mb-4 relative"
-            whileHover={{ scale: 1.1, rotate: 5 }}
+            className="inline-flex items-center justify-center relative mb-6"
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Briefcase size={28} className="text-[#2d4a2d] dark:text-white" />
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full blur-xl opacity-30" />
+            <div className="relative p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full">
+              <Briefcase size={28} className="text-white" />
+            </div>
             <motion.div
-              className="absolute inset-0 rounded-full border-2 border-pastel-green dark:border-dark-soft"
+              className="absolute -inset-2 rounded-full border-2 border-emerald-400/50"
               animate={{
-                scale: [1, 1.5, 1],
+                scale: [1, 1.3, 1],
                 opacity: [0.5, 0, 0.5],
               }}
-              transition={{ duration: 2, repeat: Infinity }}
+              transition={{ duration: 2.5, repeat: Infinity }}
             />
           </motion.div>
 
-          <h2 className="text-4xl md:text-5xl font-light text-gray-800 dark:text-gray-200 mb-4">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-200 dark:to-white bg-clip-text text-transparent">
             Work{" "}
-            <span className="text-[#2d4a2d] dark:text-pastel-soft font-medium">
+            <span className="bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
               Experience
             </span>
           </h2>
 
-          <motion.p
-            className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto"
-            initial={{ opacity: 0 }}
-            animate={isInView ? { opacity: 1 } : {}}
-            transition={{ delay: 0.2 }}
-          >
-            My professional journey and the places I've contributed my skills
-          </motion.p>
-
-          {/* Stats badge */}
-          {experiences.length > 0 && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={isInView ? { scale: 1 } : {}}
-              transition={{ delay: 0.4, type: "spring" }}
-              className="inline-flex items-center gap-2 mt-6 px-4 py-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-full border border-pastel-green dark:border-dark-soft"
-            >
-              <Clock
-                size={16}
-                className="text-[#2d4a2d] dark:text-pastel-soft"
-              />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Total Experience:{" "}
-                <span className="font-semibold text-[#2d4a2d] dark:text-pastel-soft">
-                  {Math.round(totalYears * 10) / 10} years
-                </span>
-              </span>
-            </motion.div>
-          )}
+          <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto text-lg">
+            My professional journey and impactful contributions
+          </p>
         </motion.div>
 
-        {/* Timeline */}
-        {experiences.length > 0 && (
-          <motion.div className="relative">
-            {/* Animated timeline line */}
-            <motion.div
-              className="absolute left-5 md:left-1/2 md:-translate-x-1/2 w-0.5 h-full"
-              initial={{ height: 0 }}
-              animate={isInView ? { height: "100%" } : {}}
-              transition={{ duration: 1.5, delay: 0.3 }}
-            >
-              <div className="w-full h-full bg-gradient-to-b from-pastel-green via-pastel-soft to-pastel-mint dark:from-dark-green dark:via-dark-soft dark:to-dark-mint"></div>
-            </motion.div>
+        {/* Content Section */}
+        {experiences.length === 0 ? (
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={isInView ? { scale: 1, opacity: 1 } : {}}
+            className="text-center py-20"
+          >
+            <Briefcase
+              size={64}
+              className="mx-auto text-gray-300 dark:text-gray-600 mb-4"
+            />
+            <p className="text-gray-400 dark:text-gray-500 text-lg">
+              No work experience available yet
+            </p>
+          </motion.div>
+        ) : (
+          <div className="relative px-8 md:px-12">
+            {/* Navigation Buttons */}
+            <div className="absolute -left-2 md:-left-4 top-1/2 -translate-y-1/2 z-20">
+              <motion.button
+                onClick={scrollPrev}
+                disabled={!canScrollPrev}
+                className={`p-2 rounded-full backdrop-blur-md transition-all duration-300 ${
+                  canScrollPrev
+                    ? "bg-white/80 dark:bg-gray-800/80 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white cursor-pointer"
+                    : "bg-gray-100/50 dark:bg-gray-800/50 opacity-40 cursor-not-allowed"
+                }`}
+                whileHover={canScrollPrev ? { scale: 1.1 } : {}}
+                whileTap={canScrollPrev ? { scale: 0.95 } : {}}
+              >
+                <ChevronLeft size={20} />
+              </motion.button>
+            </div>
 
-            {experiences.map((exp, index) => {
-              console.log("LOCATION DEBUG:", exp.companyName, exp.location);
-              const isEven = index % 2 === 0;
-              const duration = calculateWorkDuration(
-                exp.startDate,
-                exp.endDate,
-                exp.isPresent,
-              );
+            <div className="absolute -right-2 md:-right-4 top-1/2 -translate-y-1/2 z-20">
+              <motion.button
+                onClick={scrollNext}
+                disabled={!canScrollNext}
+                className={`p-2 rounded-full backdrop-blur-md transition-all duration-300 ${
+                  canScrollNext
+                    ? "bg-white/80 dark:bg-gray-800/80 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white cursor-pointer"
+                    : "bg-gray-100/50 dark:bg-gray-800/50 opacity-40 cursor-not-allowed"
+                }`}
+                whileHover={canScrollNext ? { scale: 1.1 } : {}}
+                whileTap={canScrollNext ? { scale: 0.95 } : {}}
+              >
+                <ChevronRight size={20} />
+              </motion.button>
+            </div>
 
-              return (
-                <motion.div
-                  key={exp.id}
-                  className="relative flex md:items-center mb-12 last:mb-0"
-                  initial={{ opacity: 0, x: isEven ? -50 : 50 }}
-                  animate={isInView ? { opacity: 1, x: 0 } : {}}
-                  transition={{
-                    duration: 0.6,
-                    delay: 0.5 + index * 0.15,
-                    type: "spring",
-                  }}
-                  onHoverStart={() => setHoveredId(exp.id)}
-                  onHoverEnd={() => setHoveredId(null)}
-                >
-                  {/* Animated timeline dot */}
-                  <motion.div
-                    className="absolute left-5 md:left-1/2 md:-translate-x-1/2 flex items-center justify-center"
-                    initial={{ scale: 0 }}
-                    animate={isInView ? { scale: 1 } : {}}
-                    transition={{ delay: 0.8 + index * 0.15, type: "spring" }}
-                  >
-                    <motion.div
-                      className="w-4 h-4 bg-[#2d4a2d] dark:bg-pastel-soft rounded-full z-10"
-                      animate={
-                        hoveredId === exp.id
-                          ? {
-                              scale: [1, 1.5, 1],
-                              boxShadow: [
-                                "0 0 0 0px rgba(45,74,45,0.5)",
-                                "0 0 0 10px rgba(45,74,45,0)",
-                              ],
-                            }
-                          : {}
-                      }
-                      transition={{ duration: 0.5 }}
-                    />
-                    <motion.div
-                      className="absolute w-8 h-8 bg-pastel-green dark:bg-dark-green rounded-full"
-                      animate={{
-                        scale: [1, 1.5, 1],
-                        opacity: [0.3, 0, 0.3],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        delay: index * 0.2,
-                      }}
-                    />
-                  </motion.div>
+            {/* Carousel Container */}
+            <div ref={emblaRef} className="overflow-hidden w-full">
+              <div className="flex -mx-2">
+                {experiences.map((exp, idx) => {
+                  const duration = calculateWorkDuration(
+                    exp.startDate,
+                    exp.endDate,
+                    exp.isPresent,
+                  );
 
-                  {/* Content */}
-                  <div
-                    className={`ml-12 md:ml-0 md:w-1/2 ${
-                      isEven ? "md:pr-10 md:text-right" : "md:ml-auto md:pl-10"
-                    }`}
-                  >
-                    <motion.div
-                      className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-pastel-green dark:border-dark-soft shadow-lg hover:shadow-2xl transition-all"
-                      whileHover={{
-                        y: -8,
-                        scale: 1.02,
-                        boxShadow: "0 20px 40px -10px rgba(45,74,45,0.3)",
-                      }}
+                  return (
+                    <div
+                      key={exp.id}
+                      className="flex-[0_0_100%] md:flex-[0_0_50%] lg:flex-[0_0_33.333%] px-2"
                     >
-                      {/* Header with company and date */}
-                      <div
-                        className={`flex items-center gap-2 mb-3 ${isEven ? "md:flex-row-reverse" : ""}`}
-                      >
-                        {/* Company icon with animation */}
-                        <motion.div
-                          className="p-2 bg-pastel-green/20 dark:bg-dark-soft/20 rounded-lg"
-                          animate={
-                            hoveredId === exp.id
-                              ? { rotate: [0, 10, -10, 0] }
-                              : {}
-                          }
-                          transition={{ duration: 0.3 }}
-                        >
-                          <Building2
-                            size={18}
-                            className="text-[#2d4a2d] dark:text-pastel-soft"
-                          />
-                        </motion.div>
+                      <div className="bg-white dark:bg-gray-800 rounded-2xl h-full flex flex-col shadow-sm">
+                        {/* HEADER GRADIENT */}
+                        <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
 
-                        <div
-                          className={`flex-1 ${isEven ? "md:text-right" : ""}`}
-                        >
-                          <h3 className="text-lg font-semibold text-[#2d4a2d] dark:text-pastel-soft">
-                            {exp.position}
-                          </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {exp.companyName}
-                          </p>
+                        <div className="p-5 flex flex-col h-full">
+                          {/* TITLE */}
+                          <div className="flex justify-between items-start gap-2 mb-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                                {exp.position}
+                              </h3>
+                              <p className="text-sm text-emerald-600 dark:text-emerald-400 truncate">
+                                {exp.companyName}
+                              </p>
+                            </div>
+
+                            {exp.isPresent && (
+                              <span className="text-[10px] px-2 py-1 bg-emerald-500 text-white rounded-full">
+                                Current
+                              </span>
+                            )}
+                          </div>
+
+                          {/* DATE */}
+                          <div className="text-xs text-gray-500 mb-2">
+                            {formatWorkPeriod(
+                              exp.startDate,
+                              exp.endDate,
+                              exp.isPresent,
+                            )}
+                          </div>
+
+                          {/* LOCATION */}
+                          {exp.location && (
+                            <div className="text-xs text-gray-400 mb-3 truncate">
+                              {exp.location}
+                            </div>
+                          )}
+
+                          {/* DESCRIPTION (FIXED HEIGHT) */}
+                          <div className="flex-1">
+                            <div className="h-[110px] bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">
+                              <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-5">
+                                {truncateText(exp.description || "", 120)}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
-                      {/* Date and duration */}
-                      <div
-                        className={`flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-3 ${isEven ? "md:justify-end" : ""}`}
-                      >
-                        <Calendar
-                          size={14}
-                          className="text-gray-400 dark:text-gray-500"
-                        />
-                        <span>
-                          {formatWorkPeriod(
-                            exp.startDate,
-                            exp.endDate,
-                            exp.isPresent,
-                          )}
-                        </span>
-
-                        {/* Duration badge */}
-                        {duration && (
-                          <motion.span
-                            initial={{ opacity: 0, scale: 0 }}
-                            animate={isInView ? { opacity: 1, scale: 1 } : {}}
-                            transition={{ delay: 1.2 + index * 0.15 }}
-                            className="text-xs bg-pastel-green/20 dark:bg-dark-soft/20 text-[#2d4a2d] dark:text-pastel-soft px-2 py-0.5 rounded-full"
-                          >
-                            {duration}
-                          </motion.span>
-                        )}
-                      </div>
-
-                      {/* Location */}
-                      {exp.location && (
-                        <motion.div
-                          className={`flex items-center gap-1 text-gray-500 dark:text-gray-400 text-sm mb-3 ${
-                            isEven ? "md:justify-end" : ""
-                          }`}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={isInView ? { opacity: 1, x: 0 } : {}}
-                          transition={{ delay: 1 + index * 0.15 }}
-                        >
-                          <MapPin size={14} />
-                          <span>{exp.location}</span>
-                        </motion.div>
-                      )}
-
-                      {/* Description - FIXED: PISAHKAN whileHover UNTUK LIGHT DAN DARK MODE */}
-                      {exp.description && (
-                        <motion.div
-                          className="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-800 transition-colors duration-300 hover:bg-[#f0fdf4] dark:hover:bg-dark-green/50"
-                          whileHover={{ scale: 1.01 }}
-                        >
-                          <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                            {exp.description}
-                          </p>
-                        </motion.div>
-                      )}
-
-                      {/* Current work badge with animation */}
-                      {exp.isPresent && (
-                        <motion.div
-                          className="mt-4 inline-flex items-center gap-2 bg-gradient-to-r from-[#2d4a2d] to-pastel-green dark:from-dark-green dark:to-dark-soft text-white text-xs px-3 py-1.5 rounded-full"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={isInView ? { opacity: 1, y: 0 } : {}}
-                          transition={{ delay: 1.4 + index * 0.15 }}
-                          whileHover={{ scale: 1.05 }}
-                        >
-                          <Award size={14} />
-                          <span>Currently Working</span>
-                          <motion.div
-                            className="w-2 h-2 bg-white rounded-full"
-                            animate={{ scale: [1, 1.5, 1] }}
-                            transition={{ duration: 1, repeat: Infinity }}
-                          />
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        )}
-        {/* Footer with total count */}
-        {experiences.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 1.5 }}
-            className="mt-16 text-center"
-          >
-            <motion.div
-              className="inline-flex items-center gap-3"
-              whileHover={{ scale: 1.05 }}
-            >
-              <Sparkles
-                size={20}
-                className="text-pastel-green dark:text-dark-green"
-              />
-              <p className="text-gray-500 dark:text-gray-400">
-                <span className="text-[#2d4a2d] dark:text-pastel-soft font-semibold text-lg">
-                  {experiences.length}
-                </span>{" "}
-                professional experiences
-              </p>
-              <Sparkles
-                size={20}
-                className="text-pastel-soft dark:text-dark-soft"
-              />
-            </motion.div>
-          </motion.div>
+            {/* Carousel Indicators */}
+            {experiences.length > 1 && (
+              <div className="flex justify-center gap-1.5 mt-8">
+                {scrollSnaps.map((_, idx) => (
+                  <motion.button
+                    key={idx}
+                    onClick={() => emblaApi?.scrollTo(idx)}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      idx === selectedIndex
+                        ? "w-6 bg-gradient-to-r from-emerald-500 to-teal-500"
+                        : "w-1.5 bg-gray-300 dark:bg-gray-600"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
-
-      {experiences.length === 0 && (
-        <div className="text-center py-20">
-          <p className="text-gray-400 dark:text-gray-500 text-lg">
-            Work experience data is not available yet.
-          </p>
-        </div>
-      )}
     </section>
   );
 }

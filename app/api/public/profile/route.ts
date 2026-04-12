@@ -1,39 +1,28 @@
-import { prisma } from "@/infrastructure/database/prisma";
-import { NextResponse } from "next/server";
+import { getProfile } from "@/modules/landing/profile/profile.service";
+import { ApiResponse } from "@/shared/response/api-response.util";
+
+export const revalidate = 3600;
 
 export async function GET() {
   try {
-    const profile = await prisma.profile.findFirst({
-      select: {
-        motto: true,
-        cvLink: true,
-        cvFilename: true,
-        photo: true,
-      },
-    });
+    const profile = await getProfile();
 
     if (!profile) {
-      return NextResponse.json(
-        { message: "Profile not found" },
-        { status: 404 },
+      return ApiResponse.error(
+        "Profile data not found",
+        "PROFILE_NOT_FOUND",
+        404,
       );
     }
 
-    return NextResponse.json(
-      {
-        motto: profile.motto,
-        cvLink: profile.cvLink,
-        cvFilename: profile.cvFilename,
-        photo: profile.photo,
-      },
-      { status: 200 },
-    );
+    return ApiResponse.success(profile, "Profile data retrieved successfully");
   } catch (error) {
-    console.error("PUBLIC PROFILE ERROR:", error);
+    console.error(error);
 
-    return NextResponse.json(
-      { message: "Failed to fetch profile" },
-      { status: 500 },
+    return ApiResponse.error(
+      "Failed to fetch profile data",
+      "INTERNAL_SERVER_ERROR",
+      500,
     );
   }
 }

@@ -1,28 +1,25 @@
-import { prisma } from "@/infrastructure/database/prisma";
-import { NextResponse } from "next/server";
+import { getSocialMedia } from "@/modules/landing/social-media/social-media.service";
+import { ApiResponse } from "@/shared/response/api-response.util";
 
 export const revalidate = 3600;
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const socials = await prisma.socialMedia.findMany({
-      select: {
-        platform: true,
-        url: true,
-        photo: true,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
+    const { searchParams } = new URL(req.url);
 
-    return NextResponse.json(socials);
+    const page = Number(searchParams.get("page") ?? 1);
+    const limit = Number(searchParams.get("limit") ?? 5);
+
+    const data = await getSocialMedia(page, limit);
+
+    return ApiResponse.success(data, "Social media retrieved successfully");
   } catch (error) {
-    console.error("PUBLIC SOCIAL MEDIA ERROR:", error);
+    console.error(error);
 
-    return NextResponse.json(
-      { message: "Failed to fetch social media" },
-      { status: 500 },
+    return ApiResponse.error(
+      "Failed to fetch social media",
+      "INTERNAL_SERVER_ERROR",
+      500,
     );
   }
 }

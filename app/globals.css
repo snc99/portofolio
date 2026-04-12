@@ -1,3 +1,4 @@
+@import "keen-slider/keen-slider.min.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -124,5 +125,10 @@
   [data-radix-sheet-overlay] {
     background: rgba(16, 185, 129, 0.08) !important;
     backdrop-filter: blur(2px);
+  }
+
+  html,
+  body {
+    overflow-x: hidden;
   }
 }
