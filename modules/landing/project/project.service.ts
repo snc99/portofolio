@@ -1,8 +1,13 @@
 import { prisma } from "@/infrastructure/database/prisma";
 import { ProjectItem } from "./project.type";
 
-export async function getProjects(): Promise<ProjectItem[]> {
+export async function getProjects(
+  page: number = 1,
+  limit: number = 5,
+): Promise<ProjectItem[]> {
   const projects = await prisma.project.findMany({
+    skip: (page - 1) * limit,
+    take: limit,
     orderBy: {
       createdAt: "desc",
     },
