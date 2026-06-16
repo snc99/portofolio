@@ -49,9 +49,9 @@ export default function SocialMediaCard({
   return (
     <>
       <Card className="w-full rounded-2xl border border-gray-100 shadow-sm">
-        <CardContent className="p-8">
+        <CardContent className="p-4 md:p-6 lg:p-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6 md:mb-8">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
                 <Share2 className="h-5 w-5 text-emerald-500" />
@@ -70,7 +70,7 @@ export default function SocialMediaCard({
             <Button
               size="sm"
               onClick={onRequestCreate}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white"
+              className="w-full md:w-auto bg-emerald-500 hover:bg-emerald-600 text-white"
             >
               <Plus className="h-4 w-4 mr-1" />
               Add
@@ -98,7 +98,7 @@ export default function SocialMediaCard({
               </Button>
             </div>
           ) : (
-            <div className="w-full overflow-hidden rounded-xl border border-gray-100">
+            <div className="w-full overflow-x-auto rounded-xl border border-gray-100">
               <SocialMediaTable
                 data={data}
                 onEdit={(item) => {

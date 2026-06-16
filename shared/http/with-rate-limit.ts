@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { ApiResponse } from "@/shared/response/api-response.util";
 import { LRUCache } from "lru-cache";
 
-const FREEZE_DURATION = 1000 * 60 * 30; // 30 menit
+// const FREEZE_DURATION = 1000 * 60 * 30; // 30 menit
+const FREEZE_DURATION = 10_000; // 10 detik untuk testing
 
 const cache = new LRUCache<string, number>({
   max: 500,
@@ -21,31 +22,24 @@ export function withRateLimit<T extends AppRouteContext = AppRouteContext>(
     const ip = req.headers.get("x-forwarded-for") ?? "unknown";
     const count = cache.get(ip) ?? 0;
 
-    // Sudah kena limit
     if (count >= limit) {
       const remainingMs = cache.getRemainingTTL(ip) ?? 0;
       const remainingMinutes = Math.ceil(remainingMs / 1000 / 60);
 
-      // kondisi pertama kali freeze
       if (count === limit) {
         cache.set(ip, count + 1);
 
-        return NextResponse.json(
-          ApiResponse.error(
-            "You have been temporarily locked out for 30 minutes.",
-            "RATE_LIMIT",
-          ),
-          { status: 429 },
+        return ApiResponse.error(
+          "You have been temporarily locked out for 30 minutes.",
+          "RATE_LIMIT",
+          429,
         );
       }
 
-      // kondisi sudah dalam freeze
-      return NextResponse.json(
-        ApiResponse.error(
-          `You are still temporarily locked out. ${remainingMinutes} minutes remaining.`,
-          "RATE_LIMIT",
-        ),
-        { status: 429 },
+      return ApiResponse.error(
+        `You are still temporarily locked out. ${remainingMinutes} minutes remaining.`,
+        "RATE_LIMIT",
+        429,
       );
     }
 

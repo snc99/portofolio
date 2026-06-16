@@ -44,18 +44,21 @@ const PersonalInformations = () => {
           </div>
         </CardHeader>
         <CardContent className="text-gray-600">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
             <div>
-              <h3 className="text-lg font-medium">Motto</h3>
-              <p className="text-gray-700 mt-2">
+              <h3 className="text-base md:text-lg font-medium">Motto</h3>
+
+              <p className="text-gray-700 mt-2 break-words">
                 {data?.motto ? data.motto : "Belum ada motto."}
               </p>
             </div>
+
             <div>
-              <h3 className="text-lg font-medium">CV</h3>
+              <h3 className="text-base md:text-lg font-medium">CV</h3>
+
               {data?.cvLink ? (
                 <a href={data.cvLink} target="_blank" rel="noopener noreferrer">
-                  <Button className="w-full mt-2 bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-2">
+                  <Button className="w-full sm:w-auto mt-2 bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-2">
                     <FileText size={18} />
                     Download CV
                   </Button>

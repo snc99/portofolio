@@ -112,7 +112,7 @@ export default function EditPersonalModal({
               onChange={(e) =>
                 setValues((prev) => ({
                   ...prev,
-                  photo: e.target.files?.[0] || null,
+                  photoFile: e.target.files?.[0] || null,
                 }))
               }
               className={errors.photoFile ? "border-red-500" : ""}

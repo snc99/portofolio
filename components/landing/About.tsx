@@ -6,6 +6,7 @@ import { User } from "lucide-react";
 import Image from "next/image";
 
 interface AboutData {
+  photo: string | null;
   description: string | null;
 }
 
@@ -170,7 +171,7 @@ export default function About({ data }: { data: AboutData | null }) {
             >
               <div className="w-full h-full rounded-full overflow-hidden shadow-2xl border-4 border-white dark:border-gray-700 relative z-10">
                 <Image
-                  src="/picture2.png"
+                  src={data?.photo || "/picture2.png"}
                   alt="About Me"
                   width={400}
                   height={400}

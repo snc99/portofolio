@@ -28,17 +28,24 @@ const SocialMediaTable = ({
   onEdit: (item: SocialMediaItem) => void;
 }) => {
   return (
-    <div className="w-full overflow-hidden rounded-xl border border-gray-100">
-      <table className="w-full text-sm">
+    <div className="w-full overflow-x-auto rounded-xl border border-gray-100">
+      <table className="min-w-[600px] md:min-w-[700px] w-full text-sm">
         <thead className="bg-gray-50 text-gray-500">
           <tr>
-            <th className="px-4 py-3 text-left font-medium">Platform</th>
-            <th className="px-4 py-3 text-left font-medium">URL</th>
-            <th className="px-4 py-3 text-left font-medium">Photo</th>
-            <th className="px-4 py-3 text-right font-medium">Actions</th>
+            <th className="px-4 py-3 text-left font-medium whitespace-nowrap">
+              Platform
+            </th>
+            <th className="px-4 py-3 text-left font-medium whitespace-nowrap">
+              URL
+            </th>
+            <th className="px-4 py-3 text-left font-medium whitespace-nowrap">
+              Photo
+            </th>
+            <th className="w-[80px] px-4 py-3 text-right font-medium whitespace-nowrap">
+              Actions
+            </th>
           </tr>
         </thead>
-
         <tbody className="divide-y divide-gray-100">
           {data.length > 0 ? (
             data.map((item) => (
@@ -47,12 +54,12 @@ const SocialMediaTable = ({
                   {item.platform}
                 </td>
 
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 w-[220px]">
                   <a
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-emerald-600 hover:underline"
+                    className="block truncate text-emerald-600 hover:underline"
                   >
                     {item.url}
                   </a>
@@ -65,7 +72,7 @@ const SocialMediaTable = ({
                       alt={item.platform}
                       width={40}
                       height={40}
-                      className="rounded-full object-cover"
+                      className="w-10 h-10 rounded-full object-cover"
                       unoptimized
                     />
                   ) : (

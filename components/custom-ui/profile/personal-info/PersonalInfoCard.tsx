@@ -33,7 +33,7 @@ export default function PersonalInfoCard({
   if (!data) {
     return (
       <Card className="w-full rounded-2xl border border-gray-100 shadow-sm">
-        <CardContent className="p-10 text-center">
+        <CardContent className="p-6 md:p-8 lg:p-10 text-center">
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-5">
               <User className="h-8 w-8 text-emerald-500" />
@@ -62,10 +62,10 @@ export default function PersonalInfoCard({
 
   return (
     <Card className="w-full rounded-2xl border border-gray-100 shadow-sm">
-      <CardContent className="p-8">
+      <CardContent className="p-4 md:p-6 lg:p-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
+        <div className="flex items-start justify-between gap-3 mb-6 md:mb-8">
+          <div className="flex items-center gap-3 md:gap-4 min-w-0">
             <div className="w-12 h-12 rounded-full overflow-hidden bg-emerald-50 flex items-center justify-center">
               {data.photo ? (
                 <img
@@ -79,7 +79,7 @@ export default function PersonalInfoCard({
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-base md:text-lg font-semibold text-gray-900">
                 Personal Information
               </h2>
               <p className="text-xs text-gray-400">
@@ -122,7 +122,7 @@ export default function PersonalInfoCard({
             <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
               Motto
             </p>
-            <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-900">
+            <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-900 break-words">
               {data.motto || "—"}
             </div>
           </div>
@@ -135,7 +135,7 @@ export default function PersonalInfoCard({
               <a
                 href={data.cvLink}
                 download={data.cvFilename}
-                className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600 break-all"
               >
                 <FileText className="h-4 w-4" />
                 Download CV

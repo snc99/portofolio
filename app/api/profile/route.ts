@@ -27,25 +27,17 @@ export const GET = withErrorHandler(
       });
 
       if (!profile) {
-        return NextResponse.json(
-          ApiResponse.success(null, "Profile is empty"),
-          { status: 200 },
-        );
+        return ApiResponse.success(null, "Profile is empty");
       }
 
-      return NextResponse.json(
-        ApiResponse.success(profile, "Profile retrieved successfully"),
-        { status: 200 },
-      );
+      return ApiResponse.success(profile, "Profile retrieved successfully");
     } catch (error) {
       console.error("GET PROFILE ERROR:", error);
 
-      return NextResponse.json(
-        ApiResponse.error(
-          "Failed to retrieve profile",
-          "INTERNAL_SERVER_ERROR",
-        ),
-        { status: 500 },
+      return ApiResponse.error(
+        "Failed to retrieve profile",
+        "INTERNAL_SERVER_ERROR",
+        500,
       );
     }
   }),
@@ -108,7 +100,7 @@ export const POST = withErrorHandler(
           motto,
           cvLink: cvUrl,
           cvFilename: cv.name,
-          photo: photoUrl, // ✅ FIELD BARU
+          photo: photoUrl,
         },
       });
 
@@ -164,6 +156,7 @@ export const PUT = withErrorHandler(
       const cv = rawCv instanceof File && rawCv.size > 0 ? rawCv : undefined;
 
       const rawPhoto = formData.get("photo");
+
       const photo =
         rawPhoto instanceof File && rawPhoto.size > 0 ? rawPhoto : undefined;
 

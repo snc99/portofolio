@@ -12,13 +12,15 @@ type LoginInput = {
 export const authService = {
   async login({ email, password }: LoginInput) {
     const user = await userRepository.findByEmail(email);
+
     if (!user) {
-      throw new Error("Invalid credentials");
+      return null;
     }
 
     const isValid = await bcrypt.compare(password, user.password);
+
     if (!isValid) {
-      throw new Error("Invalid credentials");
+      return null;
     }
 
     const token = signToken({
@@ -27,6 +29,7 @@ export const authService = {
     });
 
     await sessionRepository.save(user.id, token, SESSION_DURATION);
+
     return {
       user: {
         id: user.id,
