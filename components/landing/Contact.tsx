@@ -54,20 +54,20 @@ export default function Contact({ data = [] }: { data: SocialMedia[] }) {
     {
       icon: <Mail size={20} />,
       label: "Email",
-      value: "irvan@example.com",
-      link: "mailto:irvan@example.com",
+      value: "irvansandi3@gmail.com",
+      link: "mailto:irvansandi3@gmail.com",
     },
     {
       icon: <Phone size={20} />,
       label: "Phone",
-      value: "+62 123 4567 890",
-      link: "tel:+621234567890",
+      value: "+62 851 4713 3774",
+      link: "tel:+6285147133774",
     },
     {
       icon: <MapPin size={20} />,
       label: "Location",
-      value: "Indonesia",
-      link: "#",
+      value: "Jakarta, Indonesia",
+      link: "https://maps.app.goo.gl/xhLTBoM5TgPxv6Fr6",
     },
   ];
 
