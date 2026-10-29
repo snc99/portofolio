@@ -18,7 +18,7 @@ export const GET = withErrorHandler(
       select: {
         id: true,
         description: true,
-        photo: true, // ✅ field baru
+        photo: true, 
       },
     });
 
@@ -96,7 +96,7 @@ export const POST = withErrorHandler(
     const about = await prisma.about.create({
       data: {
         description,
-        photo: photoUrl, // ✅ field baru
+        photo: photoUrl, 
       },
     });
 
@@ -261,7 +261,7 @@ export const DELETE = withErrorHandler(
       const existing = await prisma.about.findFirst({
         select: {
           id: true,
-          photo: true, // ✅ ambil foto
+          photo: true, 
         },
       });
 

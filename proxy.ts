@@ -1,48 +1,54 @@
+
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { sessionRepository } from "@/modules/auth/session.repository";
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export async function proxy(request: NextRequest) {
   const token = request.cookies.get("pw_token")?.value;
-  const { pathname, origin } = request.nextUrl;
+  const { pathname } = request.nextUrl;
 
   const isAuthPage = pathname.startsWith("/auth");
   const isDashboardPage = pathname.startsWith("/dashboard");
+
+  console.log("[AUTH DEBUG]", {
+    pathname,
+    hasToken: Boolean(token),
+  });
 
   if (!token) {
     if (isDashboardPage) {
       return redirectLogin(request);
     }
+
     return NextResponse.next();
   }
 
-  let payload: any;
   try {
     const verified = await jwtVerify(token, secret);
-    payload = verified.payload;
-  } catch {
-    return redirectLogin(request);
-  }
+    const userId = verified.payload.id;
 
-  try {
-    const res = await fetch(`${origin}/api/auth/session-check`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
+    if (typeof userId !== "string") {
       return redirectLogin(request);
     }
-  } catch {
+
+    const activeToken = await sessionRepository.get(userId);
+
+    if (!activeToken || activeToken !== token) {
+      console.error("[AUTH DEBUG] Session tidak valid");
+      return redirectLogin(request);
+    }
+  } catch (error) {
+    console.error("[AUTH DEBUG] Validasi autentikasi gagal:", error);
     return redirectLogin(request);
   }
 
   if (isAuthPage) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(
+      new URL("/dashboard", request.url),
+    );
   }
 
   return NextResponse.next();
@@ -55,9 +61,16 @@ function redirectLogin(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const res = NextResponse.redirect(new URL("/auth/login", request.url));
-  res.cookies.set("pw_token", "", { maxAge: 0 });
-  return res;
+  const response = NextResponse.redirect(
+    new URL("/auth/login", request.url),
+  );
+
+  response.cookies.set("pw_token", "", {
+    maxAge: 0,
+    path: "/",
+  });
+
+  return response;
 }
 
 export const config = {

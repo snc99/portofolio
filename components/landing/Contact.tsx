@@ -20,7 +20,21 @@ interface SocialMedia {
   photo: string;
 }
 
-export default function Contact({ data = [] }: { data: SocialMedia[] }) {
+interface ContactData {
+  email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  address: string | null;
+  isAvailable: boolean | null;
+}
+
+export default function Contact({ 
+  data = [], 
+  contact,
+ }: { 
+  data: SocialMedia[];
+  contact: ContactData | null;
+}) {
   const [submitted, setSubmitted] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -51,25 +65,50 @@ export default function Contact({ data = [] }: { data: SocialMedia[] }) {
 
   // Contact info items
   const contactInfo = [
-    {
-      icon: <Mail size={20} />,
-      label: "Email",
-      value: "irvansandi3@gmail.com",
-      link: "mailto:irvansandi3@gmail.com",
-    },
-    {
-      icon: <Phone size={20} />,
-      label: "Phone",
-      value: "+62 851 4713 3774",
-      link: "tel:+6285147133774",
-    },
-    {
-      icon: <MapPin size={20} />,
-      label: "Location",
-      value: "Jakarta, Indonesia",
-      link: "https://maps.app.goo.gl/xhLTBoM5TgPxv6Fr6",
-    },
-  ];
+  ...(contact?.email
+    ? [
+        {
+          icon: <Mail size={20} />,
+          label: "Email",
+          value: contact.email,
+          link: `mailto:${contact.email}`,
+        },
+      ]
+    : []),
+
+  ...(contact?.phone
+    ? [
+        {
+          icon: <Phone size={20} />,
+          label: "Phone",
+          value: contact.phone,
+          link: `tel:${contact.phone}`,
+        },
+      ]
+    : []),
+
+  ...(contact?.whatsapp
+    ? [
+        {
+          icon: <MessageSquare size={20} />,
+          label: "WhatsApp",
+          value: contact.whatsapp,
+          link: `https://wa.me/${contact.whatsapp.replace(/\D/g, "")}`,
+        },
+      ]
+    : []),
+
+  ...(contact?.address
+    ? [
+        {
+          icon: <MapPin size={20} />,
+          label: "Location",
+          value: contact.address,
+          link: undefined,
+        },
+      ]
+    : []),
+];
 
   return (
     <section

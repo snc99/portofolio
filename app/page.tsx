@@ -14,11 +14,12 @@ import { getSkills } from "@/modules/landing/skills/skill.service";
 import { getWorkExperiences } from "@/modules/landing/work-experience/work-experience.service";
 import { getProjects } from "@/modules/landing/project/project.service";
 import { getSocialMedia } from "@/modules/landing/social-media/social-media.service";
+import { getContact } from "@/modules/landing/contact/contact.service";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [profile, about, skills, workExperience, projects, socialMedia] =
+  const [profile, about, skills, workExperience, projects, socialMedia, contact] =
     await Promise.all([
       getProfile(),
       getAbout(),
@@ -26,6 +27,7 @@ export default async function Home() {
       getWorkExperiences(),
       getProjects(),
       getSocialMedia(),
+      getContact(),
     ]);
 
   return (
@@ -33,7 +35,7 @@ export default async function Home() {
       <main className="min-h-screen bg-gradient-to-b bg-pastel-green">
         <Navbar />
         <section id="home" className="scroll-mt-16">
-          <Profile data={profile} />
+          <Profile data={profile} contact={contact}/>
         </section>
 
         <section id="about" className="scroll-mt-16">
@@ -56,8 +58,11 @@ export default async function Home() {
         </section>
 
         <section id="contact" className="scroll-mt-16">
-          <Contact data={socialMedia.items} />
-        </section>
+  <Contact
+    data={socialMedia.items}
+    contact={contact}
+  />
+</section>
 
         <Footer />
         <FloatingToggle />

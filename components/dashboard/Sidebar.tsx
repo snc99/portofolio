@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   SquareTerminal,
   User,
+  Contact
 } from "lucide-react";
 
 import { NavMain } from "./Navmain";
@@ -97,6 +98,12 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         url: "/dashboard/projects",
         icon: Layers,
         isActive: pathname === "/dashboard/projects",
+      },
+      {
+        title: "Contact",
+        url: "/dashboard/contact",
+        icon: Contact,
+        isActive: pathname === "/dashboard/contact",
       },
     ],
   };

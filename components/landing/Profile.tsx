@@ -12,7 +12,17 @@ interface ProfileData {
   photo: string | null;
 }
 
-export default function Profile({ data }: { data: ProfileData | null }) {
+interface ContactData {
+  isAvailable: boolean | null;
+}
+
+export default function Profile({ 
+  data , 
+  contact, 
+}: { 
+  data: ProfileData | null, 
+  contact: ContactData | null 
+}) {
   const fullText = "Muhamad Irvan Sandy";
   const [index, setIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -87,6 +97,20 @@ export default function Profile({ data }: { data: ProfileData | null }) {
             {data?.motto ||
               "Passionate developer creating beautiful and functional web experiences"}
           </motion.p>
+          {contact?.isAvailable === true && (
+  <motion.div
+    variants={fadeInLeft}
+    className="flex justify-center lg:justify-start mb-6"
+  >
+    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-6 py-2 text-sm font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
+      <span className="relative flex h-2.5 w-2.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+      </span>
+      Open to Work
+    </span>
+  </motion.div>
+)}
 
           <motion.div
             variants={fadeInLeft}
