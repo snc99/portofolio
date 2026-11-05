@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, LogIn, Moon, Sun } from "lucide-react";
 import Link from "next/link";
@@ -8,10 +8,32 @@ import { useTheme } from "./ThemeContext";
 
 export default function FloatingToggle() {
   const [isOpen, setIsOpen] = useState(false);
-  const { theme, toggleTheme } = useTheme();
+const { theme, toggleTheme } = useTheme();
+
+const floatingRef = useRef<HTMLDivElement>(null);
+
+useEffect(() => {
+  function handleClickOutside(event: MouseEvent) {
+    if (
+      floatingRef.current &&
+      !floatingRef.current.contains(event.target as Node)
+    ) {
+      setIsOpen(false);
+    }
+  }
+
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+    <div
+  ref={floatingRef}
+  className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3"
+>
       <AnimatePresence>
         {isOpen && (
           <motion.div

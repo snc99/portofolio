@@ -27,16 +27,20 @@ export default function Profile({
   const [index, setIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
+ useEffect(() => {
+  let timeout: NodeJS.Timeout;
+
+  if (!isDeleting && index === fullText.length) {
+    // Tunggu 3 detik sebelum mulai menghapus
+    timeout = setTimeout(() => {
+      setIsDeleting(true);
+    }, 6000);
+  } else {
     const typingSpeed = isDeleting ? 80 : 120;
 
-    const timeout = setTimeout(() => {
+    timeout = setTimeout(() => {
       if (!isDeleting) {
-        if (index < fullText.length) {
-          setIndex((prev) => prev + 1);
-        } else {
-          setIsDeleting(true);
-        }
+        setIndex((prev) => prev + 1);
       } else {
         if (index > 0) {
           setIndex((prev) => prev - 1);
@@ -45,9 +49,10 @@ export default function Profile({
         }
       }
     }, typingSpeed);
+  }
 
-    return () => clearTimeout(timeout);
-  }, [index, isDeleting]);
+  return () => clearTimeout(timeout);
+}, [index, isDeleting]);
 
   const displayText = fullText.slice(0, index);
 
@@ -76,19 +81,25 @@ export default function Profile({
             ✦ Welcome to my portfolio ✦
           </motion.p>
 
-          <motion.div variants={fadeInLeft}>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-gray-800 dark:text-gray-200 mb-4 leading-tight">
-              <span className="block">Hi, I'm</span>
-              <span className="text-[#2d4a2d] dark:text-pastel-soft font-medium break-words inline-block max-w-full">
-                {displayText}
-                <motion.span
-                  animate={{ opacity: [1, 0] }}
-                  transition={{ duration: 0.8, repeat: Infinity }}
-                  className="ml-1 inline-block w-[2px] h-8 bg-[#2d4a2d] dark:bg-pastel-soft align-middle"
-                />
-              </span>
-            </h1>
-          </motion.div>
+         <motion.div variants={fadeInLeft}>
+  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-gray-800 dark:text-gray-200 mb-4 leading-tight">
+    <span className="block">Hi, I'm</span>
+
+    <span className="text-[#2d4a2d] dark:text-pastel-soft font-medium break-words inline-block max-w-full">
+      {displayText}
+
+      <motion.span
+        animate={{ opacity: [1, 0] }}
+        transition={{
+          duration: 0.8,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="ml-1 inline-block w-[2px] h-8 bg-[#2d4a2d] dark:bg-pastel-soft align-middle"
+      />
+    </span>
+  </h1>
+</motion.div>
 
           <motion.p
             variants={fadeInLeft}
