@@ -42,9 +42,12 @@ export default async function Home() {
           <About data={about} />
         </section>
 
-        <section id="skills" className="scroll-mt-16 bg-pastel-green/20">
-          <Skills data={skills.data} />
-        </section>
+       <section
+  id="skills"
+  className="scroll-mt-16 bg-pastel-green/20 dark:bg-dark-light"
+>
+  <Skills data={skills.data} />
+</section>
 
         <section
           id="work-experience"
