@@ -1,156 +1,342 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Home,
+  UserRound,
+  Code2,
+  BriefcaseBusiness,
+  FolderKanban,
+  Mail,
+} from "lucide-react";
+
+const menuItems = [
+  { name: "Home", mobileLabel: "Home", id: "home", icon: Home },
+  { name: "About", mobileLabel: "About", id: "about", icon: UserRound },
+  { name: "Skills", mobileLabel: "Skills", id: "skills", icon: Code2 },
+  {
+    name: "Work Experience",
+    mobileLabel: "Work",
+    id: "work-experience",
+    icon: BriefcaseBusiness,
+  },
+  {
+    name: "Projects",
+    mobileLabel: "Projects",
+    id: "projects",
+    icon: FolderKanban,
+  },
+  {
+    name: "Contact",
+    mobileLabel: "Contact",
+    id: "contact",
+    icon: Mail,
+  },
+];
 
 const Navbar = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState("");
+  const [activeSection, setActiveSection] = useState("home");
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-  // Handle active section based on scroll position
+  // Handle scroll and active section
   useEffect(() => {
-    const sections = [
-      "home",
-      "about",
-      "skills",
-      "work-experience",
-      "projects",
-      "contact",
-    ];
-
     const handleScroll = () => {
-      // Handle navbar background
-      setIsScrolled(window.scrollY > 20);
+      setIsScrolled(window.scrollY > 40);
 
-      // Handle active section
-      sections.forEach((section) => {
-        const element = document.getElementById(section);
+      let currentSection = "home";
+
+      menuItems.forEach((item) => {
+        const element = document.getElementById(item.id);
+
         if (element) {
           const rect = element.getBoundingClientRect();
-          if (rect.top <= 100 && rect.bottom >= 100) {
-            setActiveSection(section);
+
+          if (rect.top <= 160) {
+            currentSection = item.id;
           }
         }
       });
+
+      setActiveSection(currentSection);
     };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    handleScroll();
+
+    window.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
-  // Scroll smoothly when clicking on a section link
-  const handleScroll = (id: string) => {
+  // Smooth navigation
+  const handleNavigate = (id: string) => {
     const element = document.getElementById(id);
+
     if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      element.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+
+      setActiveSection(id);
     }
-    setIsOpen(false);
   };
 
-  const menuItems = [
-    { name: "Home", id: "home" },
-    { name: "About", id: "about" },
-    { name: "Skills", id: "skills" },
-    { name: "Work Experience", id: "work-experience" },
-    { name: "Projects", id: "projects" },
-    { name: "Contact", id: "contact" },
-  ];
+  const isExpanded = !isScrolled || isHovered;
 
   return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.5 }}
-      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
-        isScrolled
-          ? "bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-sm border-b border-[#e6f3e6] dark:border-dark-soft/20"
-          : "bg-transparent"
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo/Brand */}
-          <motion.div
-            className="flex-shrink-0"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+    <>
+      {/* ================= DESKTOP FLOATING PILL ================= */}
+<motion.nav
+  initial={{ opacity: 0, y: -25, x: "-50%" }}
+  animate={{ opacity: 1, y: 0, x: "-50%" }}
+  transition={{ duration: 0.5, ease: "easeOut" }}
+  onMouseEnter={() => setIsHovered(true)}
+  onMouseLeave={() => setIsHovered(false)}
+  onFocusCapture={() => setIsHovered(true)}
+  onBlurCapture={(event) => {
+    if (
+      !event.currentTarget.contains(
+        event.relatedTarget as Node | null
+      )
+    ) {
+      setIsHovered(false);
+    }
+  }}
+  aria-label="Main navigation"
+  style={{
+    width: "min(700px, calc(100vw - 32px))",
+  }}
+  className="
+    hidden md:flex fixed top-5 left-1/2
+    z-[100] justify-center
+  "
+>
+
+        <motion.div
+          animate={{
+  width: isExpanded ? "100%" : 64,
+}}
+          transition={{
+            type: "spring",
+            stiffness: 260,
+            damping: 28,
+          }}
+          style={{
+            maxWidth: "calc(100vw - 32px)",
+          }}
+          className="
+            flex h-14 items-center overflow-hidden
+            rounded-full
+            border border-[#e6f3e6]
+            dark:border-dark-soft/20
+            bg-white/85 dark:bg-gray-900/85
+            backdrop-blur-xl
+            shadow-[0_8px_30px_rgba(45,74,45,0.10)]
+            dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)]
+          "
+        >
+          {/* Logo */}
+          <motion.button
+            onClick={() => handleNavigate("home")}
+            animate={{
+              width: isExpanded ? 140 : 64,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 260,
+              damping: 28,
+            }}
+            aria-label="Go to home"
+            className="
+              h-full shrink-0 flex items-center justify-center
+              gap-2
+              text-[#2d4a2d] dark:text-pastel-soft
+              font-medium tracking-wide
+            "
           >
-            <span className="text-2xl font-light text-[#2d4a2d] dark:text-pastel-soft tracking-wide">
-              ✦ portfolio
-            </span>
-          </motion.div>
+            <span className="text-xl">✦</span>
+
+            <AnimatePresence initial={false}>
+              {isExpanded && (
+                <motion.span
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-base overflow-hidden whitespace-nowrap"
+                >
+                  portfolio
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center space-x-1">
-            {menuItems.map((item) => (
-              <motion.button
-                key={item.id}
-                onClick={() => handleScroll(item.id)}
-                className={`relative px-4 py-2 text-sm font-medium transition-colors rounded-full ${
-                  activeSection === item.id
-                    ? "text-[#2d4a2d] dark:text-pastel-soft"
-                    : "text-[#4a6b4a] dark:text-gray-400 hover:text-[#2d4a2d] dark:hover:text-pastel-soft"
-                }`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+          <AnimatePresence initial={false}>
+            {isExpanded && (
+              <motion.div
+                initial={{ opacity: 0, x: 15 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 15 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-1 items-center justify-center gap-1 pr-3"
               >
-                {item.name}
-                {activeSection === item.id && (
-                  <motion.div
-                    layoutId="activeSection"
-                    className="absolute inset-0 bg-[#e6f3e6] dark:bg-dark-soft/20 rounded-full -z-10"
-                    transition={{ type: "spring", duration: 0.5 }}
-                  />
-                )}
-              </motion.button>
-            ))}
-          </div>
+                {menuItems.map((item) => (
+                  <motion.button
+                    key={item.id}
+                    onClick={() => handleNavigate(item.id)}
+                    whileTap={{ scale: 0.94 }}
+                    aria-current={
+                      activeSection === item.id ? "location" : undefined
+                    }
+                    className={`
+                      relative isolate whitespace-nowrap
+                      rounded-full px-3 py-2
+                      text-xs lg:text-sm font-medium
+                      transition-colors duration-200
+                      ${
+                        activeSection === item.id
+                          ? "text-[#2d4a2d] dark:text-pastel-soft"
+                          : "text-[#4a6b4a] dark:text-gray-400 hover:text-[#2d4a2d] dark:hover:text-pastel-soft"
+                      }
+                    `}
+                  >
+                    {activeSection === item.id && (
+                      <motion.span
+                        layoutId="desktop-active"
+                        className="
+                          absolute inset-0 z-0 rounded-full
+                          bg-[#e6f3e6] dark:bg-dark-soft/30
+                        "
+                        transition={{
+                          type: "spring",
+                          stiffness: 350,
+                          damping: 30,
+                        }}
+                      />
+                    )}
 
-          {/* Hamburger menu for mobile view */}
-          <div className="md:hidden">
-            <motion.button
-              onClick={() => setIsOpen(!isOpen)}
-              className="text-[#4a6b4a] dark:text-gray-400 hover:text-[#2d4a2d] dark:hover:text-pastel-soft focus:outline-none p-2"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
-            </motion.button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.2 }}
-          className="md:hidden bg-pastel-green/20 dark:bg-gray-800/90 backdrop-blur-md border-t border-[#e6f3e6] dark:border-dark-soft/20"
-        >
-          <div className="px-4 py-2 space-y-1">
-            {menuItems.map((item) => (
-              <motion.button
-                key={item.id}
-                onClick={() => handleScroll(item.id)}
-                className={`block w-full text-left px-4 py-3 text-base font-medium rounded-lg transition-colors ${
-                  activeSection === item.id
-                    ? "bg-[#e6f3e6] dark:bg-dark-soft/20 text-[#2d4a2d] dark:text-pastel-soft"
-                    : "text-[#4a6b4a] dark:text-gray-400 hover:bg-[#e6f3e6] dark:hover:bg-dark-soft/20 hover:text-[#2d4a2d] dark:hover:text-pastel-soft"
-                }`}
-                whileHover={{ x: 10 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {item.name}
-              </motion.button>
-            ))}
-          </div>
+                    <span className="relative z-10">
+                      {item.name}
+                    </span>
+                  </motion.button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
-      )}
-    </motion.nav>
+      </motion.nav>
+
+      {/* ================= MOBILE BOTTOM NAVIGATION ================= */}
+<motion.nav
+  initial={{ opacity: 0, y: 60, x: "-50%" }}
+  animate={{ opacity: 1, y: 0, x: "-50%" }}
+  transition={{ duration: 0.5, delay: 0.2 }}
+  aria-label="Mobile navigation"
+  className="
+    md:hidden fixed
+    bottom-[max(1rem,env(safe-area-inset-bottom))]
+    left-1/2
+    z-[100]
+    w-[calc(100%-24px)]
+    max-w-md
+  "
+>
+        <div
+          className="
+            flex items-center gap-1
+            rounded-full p-1.5
+            border border-[#e6f3e6]
+            dark:border-dark-soft/20
+            bg-white/90 dark:bg-gray-900/90
+            backdrop-blur-xl
+            shadow-[0_8px_30px_rgba(45,74,45,0.12)]
+            dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)]
+          "
+        >
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeSection === item.id;
+
+            return (
+              
+<motion.button
+  key={item.id}
+  layout
+  onClick={() => handleNavigate(item.id)}
+  whileTap={{ scale: 0.9 }}
+  aria-label={item.name}
+  aria-current={isActive ? "location" : undefined}
+  title={item.name}
+  transition={{
+    type: "spring",
+    stiffness: 350,
+    damping: 28,
+  }}
+  className={`
+    relative isolate min-w-0
+    flex items-center justify-center
+    gap-1.5 overflow-hidden
+    rounded-full py-3 px-1
+    ${
+      isActive
+        ? "flex-[1.8] text-[#2d4a2d] dark:text-pastel-soft"
+        : "flex-1 text-[#789078] dark:text-gray-400"
+    }
+  `}
+>
+  {isActive && (
+    <motion.span
+      layoutId="mobile-active"
+      className="
+        absolute inset-0 z-0 rounded-full
+        bg-[#e6f3e6] dark:bg-dark-soft/30
+      "
+      transition={{
+        type: "spring",
+        stiffness: 350,
+        damping: 28,
+      }}
+    />
+  )}
+
+  <Icon
+    size={19}
+    strokeWidth={isActive ? 2.2 : 1.8}
+    className="relative z-10 shrink-0"
+  />
+
+  <AnimatePresence initial={false}>
+    {isActive && (
+      <motion.span
+        initial={{ opacity: 0, width: 0 }}
+        animate={{ opacity: 1, width: "auto" }}
+        exit={{ opacity: 0, width: 0 }}
+        transition={{ duration: 0.2 }}
+        className="
+          relative z-10
+          overflow-hidden whitespace-nowrap
+          text-[10px] font-semibold
+        "
+      >
+        {item.mobileLabel}
+      </motion.span>
+    )}
+  </AnimatePresence>
+</motion.button>
+
+            );
+          })}
+        </div>
+      </motion.nav>
+    </>
   );
 };
 
